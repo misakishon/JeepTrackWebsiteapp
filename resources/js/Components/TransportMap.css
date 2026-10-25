@@ -1,2 +1,166 @@
-.stop-coordinate-preview{height:100%;width:100%;position:relative;overflow:hidden;background:#eef3f8}.stop-coordinate-preview>svg{display:block;width:100%;height:100%;max-width:100%}.stop-coordinate-preview text{font:500 11px Inter,Arial,sans-serif;fill:#516781}.stop-coordinate-preview circle{cursor:pointer}.stop-coordinate-preview .map-controls{position:absolute;right:12px;bottom:37px;display:flex;flex-direction:column;gap:4px}.stop-coordinate-preview .map-controls button{width:44px;height:44px;border:1px solid #dce4ee;background:white;color:#23456f;border-radius:7px;font-size:22px;display:grid;place-items:center;cursor:pointer}.stop-coordinate-preview .map-selected{position:absolute;bottom:34px;left:12px;max-width:calc(100% - 75px);background:#ffffffed;border:1px solid #dce5f0;border-radius:5px;padding:8px 10px;color:#536e90;font-size:9px;line-height:1.6}.stop-coordinate-preview .attribution{position:absolute;bottom:0;right:0;padding:4px 7px;background:#fffffff0;color:#718397;font-size:8px}.stop-coordinate-preview .map-controls button:focus-visible{outline:3px solid #7aa4ff;outline-offset:2px}
-.coordinate-stop-picker{position:absolute;left:12px;top:55px;font:9px Inter,Arial,sans-serif;color:#5e7696;background:#fffffff0;border:1px solid #dce5f0;border-radius:5px;padding:7px 9px;max-width:calc(100% - 75px)}.coordinate-stop-picker select{display:block;margin-top:4px;min-height:31px;max-width:200px;width:100%;border:0;background:white;font:11px Inter,Arial,sans-serif;color:#365785;padding:5px 22px 5px 0;box-shadow:none}
+.stop-coordinate-preview{height:100%;width:100%;position:relative;overflow:hidden;background:#eef3f8}
+.stop-coordinate-preview>svg{display:block;width:100%;height:100%;max-width:100%}
+.stop-coordinate-preview text{font:500 11px Inter,Arial,sans-serif;fill:#516781}
+.stop-coordinate-preview circle{cursor:pointer}
+.stop-coordinate-preview .map-controls{position:absolute;right:12px;bottom:37px;display:flex;flex-direction:column;gap:4px}
+.stop-coordinate-preview .map-controls button{width:44px;height:44px;border:1px solid #dce4ee;background:white;color:#23456f;border-radius:7px;font-size:22px;display:grid;place-items:center;cursor:pointer}
+.stop-coordinate-preview .map-selected{position:absolute;bottom:34px;left:12px;max-width:calc(100% - 75px);background:#ffffffed;border:1px solid #dce5f0;border-radius:5px;padding:8px 10px;color:#536e90;font-size:9px;line-height:1.6}
+.stop-coordinate-preview .attribution{position:absolute;bottom:0;right:0;padding:4px 7px;background:#fffffff0;color:#718397;font-size:8px}
+.stop-coordinate-preview .map-controls button:focus-visible{outline:3px solid #7aa4ff;outline-offset:2px}
+.coordinate-stop-picker{position:absolute;left:12px;top:55px;font:9px Inter,Arial,sans-serif;color:#5e7696;background:#fffffff0;border:1px solid #dce5f0;border-radius:5px;padding:7px 9px;max-width:calc(100% - 75px)}
+.coordinate-stop-picker select{display:block;margin-top:4px;min-height:31px;max-width:200px;width:100%;border:0;background:white;font:11px Inter,Arial,sans-serif;color:#365785;padding:5px 22px 5px 0;box-shadow:none}
+
+/* Hide Mapbox zoom in (+) and zoom out (-) controls */
+.mapboxgl-ctrl-zoom-in,
+.mapboxgl-ctrl-zoom-out,
+.mapboxgl-ctrl-group button.mapboxgl-ctrl-zoom-in,
+.mapboxgl-ctrl-group button.mapboxgl-ctrl-zoom-out,
+.mapboxgl-ctrl-group:has(.mapboxgl-ctrl-zoom-in) {
+    display: none !important;
+}
+
+/* Demo simulation styling */
+.mb-vehicle.simulation{
+    background:#0d9488!important;
+    border-color:#ccfbf1!important;
+    position:relative;
+    display:grid;
+    place-items:center;
+    transition:transform 0.08s linear;
+}
+
+/* Ensure only the SVG icon rotates, while the marker element and SIM badge stay upright */
+.mb-vehicle.simulation svg{
+    display:block;
+    width:22px;
+    height:22px;
+    transform-origin:center center;
+    transition:transform 0.12s linear;
+    pointer-events:none;
+}
+
+/* Upright SIM badge positioned on marker */
+.mb-vehicle.simulation::after{
+    content:"SIM";
+    position:absolute;
+    bottom:-5px;
+    right:-5px;
+    background:#0f766e;
+    color:#fff;
+    font-size:8px;
+    font-weight:700;
+    padding:1px 3px;
+    border-radius:3px;
+    border:1px solid #fff;
+    line-height:1;
+    pointer-events:none;
+    transform:none!important;
+}
+
+/* Popup viewport constraint & responsive phone styling */
+.mapboxgl-popup{
+    max-width:min(290px, 84vw)!important;
+    z-index:50;
+}
+.mapboxgl-popup-content{
+    font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!important;
+    padding:12px 14px!important;
+    border-radius:10px!important;
+    box-shadow:0 4px 18px rgba(15,23,42,0.18)!important;
+    background:#fff!important;
+    max-width:min(290px, 84vw)!important;
+    box-sizing:border-box;
+    word-wrap:break-word!important;
+    overflow-wrap:break-word!important;
+    white-space:normal!important;
+}
+
+.sim-popup{
+    font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    font-size:12px;
+    line-height:1.45;
+    color:#1e293b;
+    word-wrap:break-word;
+    overflow-wrap:break-word;
+}
+.sim-popup-title{
+    font-weight:700;
+    font-size:13px;
+    color:#0f172a;
+    margin-bottom:4px;
+    border-bottom:1px solid #f1f5f9;
+    padding-bottom:3px;
+    word-break:break-word;
+}
+.sim-popup-row{
+    margin-top:3px;
+    font-size:11.5px;
+    color:#334155;
+    word-break:break-word;
+}
+.sim-popup-row strong{
+    color:#0f172a;
+}
+.sim-popup-status{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-top:5px;
+    font-size:11px;
+    font-weight:600;
+}
+.sim-status-dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:#0d9488;
+    display:inline-block;
+    flex-shrink:0;
+}
+.sim-status-dot.paused{
+    background:#f59e0b;
+}
+.sim-status-dot.finished{
+    background:#64748b;
+}
+.sim-badge-tag{
+    display:inline-block;
+    background:#ccfbf1;
+    color:#0f766e;
+    font-size:10px;
+    font-weight:600;
+    padding:3px 6px;
+    border-radius:4px;
+    margin-top:7px;
+    border:1px solid #99f6e4;
+    white-space:normal;
+    word-break:break-word;
+    line-height:1.3;
+}
+.map-label.simulation{
+    background:#0f766edf;
+    color:#f0fdfa;
+}
+
+@media(max-width:599px){
+    .mapboxgl-popup{
+        max-width:min(240px, 80vw)!important;
+    }
+    .mapboxgl-popup-content{
+        padding:9px 11px!important;
+        font-size:11px!important;
+    }
+    .sim-popup{
+        font-size:11px;
+    }
+    .sim-popup-title{
+        font-size:12px;
+    }
+    .sim-popup-row{
+        font-size:10.5px;
+    }
+    .sim-badge-tag{
+        font-size:9.5px;
+        padding:2px 5px;
+    }
+}

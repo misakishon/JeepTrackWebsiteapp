@@ -26,6 +26,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/api/admin/analytics/trips/{id}/schedule', [AnalyticsController::class, 'schedule']);
     Route::patch('/api/admin/analytics/feedback/{id}', [AnalyticsController::class, 'feedback']);
     Route::get('/api/transport/snapshot', [TransportDatabaseController::class, 'snapshot']);
+    Route::get('/api/transport/simulation', fn (\App\Services\DemoSimulationService $service) => response()->json(['simulatedVehicles' => $service->getSimulatedPositions()]));
     Route::get('/api/transport/trips/{id}', [TransportDatabaseController::class, 'trip']);
     Route::post('/api/transport/trips/{id}/start', [TripTrackingController::class, 'start'])->middleware('throttle:5,1,trip-start');
     Route::post('/api/transport/trips/{id}/gps', [TripTrackingController::class, 'point'])->middleware('throttle:30,1,trip-gps');

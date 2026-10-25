@@ -44,3 +44,4 @@ Thumbs.db
 !/storage/app/public/.gitignore
 /bootstrap/cache/*.php
 *.class
+/scratch/
