@@ -1,0 +1,30 @@
+// Dependency-free, valid PDF generation with paginated vector charts and tables.
+const ascii=s=>String(s??'Unavailable').normalize('NFKD').replace(/[–—]/g,'-').replace(/[^\x20-\x7E]/g,'');
+const escape=s=>ascii(s).replace(/([\\()])/g,'\\$1');
+export function csvBlob(columns,rows){const cell=v=>'"'+String(v??'Unavailable').replace(/"/g,'""')+'"';return new Blob(['\uFEFF'+[columns.map(c=>cell(c.label)).join(','),...rows.map(r=>columns.map(c=>cell(c.export?c.export(r[c.key],r):r[c.key])).join(','))].join('\r\n')],{type:'text/csv;charset=utf-8'});}
+export function pdfBlob({title,filters,summary,columns,rows,charts=[],definitions=[],generated,source='Demo data'}){
+    const pages=[];let lines=[],y=548,page=0;const W=842,H=595;
+    const text=(s,x=32,yy=y,size=9,color='0.16 0.22 0.32')=>lines.push(`${color} rg BT /F1 ${size} Tf ${x} ${yy} Td (${escape(s)}) Tj ET`);
+    const rect=(x,yy,w,h,color)=>lines.push(`${color} rg ${x} ${yy} ${w} ${h} re f`);
+    const finish=()=>{text('PUJ Transportation Analytics | '+source+' | Asia/Manila',32,19,8);text('Page '+page,W-70,19,8);pages.push(lines.join('\n'));};
+    const start=()=>{if(page)finish();lines=[];page++;y=548;text(title,32,y,17);y-=20;wrap(source+' | '+filters,170).forEach(line=>{text(line,32,y,8);y-=12;});y-=3;text('Generated '+generated+' | Reporting timezone: Asia/Manila',32,y,8);y-=28;};
+    const need=h=>{if(y-h<45)start();};
+    const wrap=(value,max)=>{const words=ascii(value).split(/\s+/);const out=[];let row='';for(const word of words){if((row+' '+word).length>max&&row){out.push(row);row=word;}else row+=(row?' ':'')+word;}if(row)out.push(row);return out.length?out:['Unavailable'];};
+    start();summary.forEach((s,i)=>{need(25);text(s.label+': '+s.value,32,y,11);y-=21;});y-=10;
+    for(const chart of charts){if(!chart.data?.length)continue;need(205);text(chart.title,32,y,12);y-=12;const plotY=y-130,max=Math.max(...(chart.kind==='line'&&chart.series?chart.series.flatMap(s=>s.data):chart.data).flatMap(d=>[d.value||0,chart.stacked?(d.value||0)+(d.second||0):d.second||0]),1),plotW=735;
+        rect(50,plotY,plotW,1,'0.84 0.88 0.94');
+        for(let tick=0;tick<=4;tick++){const tickY=plotY+10+tick*25;rect(50,tickY,plotW,.3,'0.92 0.94 0.97');text((max*tick/4).toFixed(max<=5?1:0),32,tickY,7);}
+        if(chart.kind==='line'){(chart.series||[{label:chart.title,data:chart.data}]).forEach((series,si)=>{let segment=[];const draw=()=>{if(segment.length)lines.push((si?'0.25 0.61 0.49':'0.15 0.39 0.90')+' RG 1.5 w '+segment.join(' ')+' S');segment=[];};series.data.forEach((d,i)=>{if(d.value==null){draw();return;}const x=55+i/Math.max(1,series.data.length-1)*(plotW-15),yy=plotY+10+(d.value/max)*100;segment.push(`${x.toFixed(2)} ${yy.toFixed(2)} ${segment.length?'l':'m'}`);if(d.count!=null&&i%Math.max(1,Math.ceil(series.data.length/10))===0)text('n='+d.count,x,yy+7,7);});draw();text(series.label,60+si*300,plotY-24,8,si?'0.25 0.61 0.49':'0.15 0.39 0.90');});}
+        else {const width=plotW/Math.max(1,chart.data.length);chart.data.forEach((d,i)=>{const barWidth=chart.stacked?width*.65:width*.45;rect(55+i*width,plotY+10,Math.max(2,barWidth),(d.value||0)/max*100,'0.15 0.39 0.90');if(d.second!=null)rect(55+i*width+(chart.stacked?0:width*.45),plotY+10+(chart.stacked?(d.value||0)/max*100:0),chart.stacked?barWidth:width*.35,d.second/max*100,'0.42 0.66 0.83');text(String(d.value==null?'N/A':Number(d.value.toFixed(1))),55+i*width,plotY+115,7);});(chart.legend||[{label:chart.unit||'Count'}]).forEach((l,i)=>text(l.label,60+i*220,plotY-24,8,i?'0.42 0.66 0.83':'0.15 0.39 0.90'));}
+        chart.data.forEach((d,i)=>{if(i%Math.max(1,Math.ceil(chart.data.length/8))===0)text(ascii(d.label).slice(0,18),55+i/Math.max(1,chart.data.length)*(plotW-10),plotY-8,7);});text(chart.unit||'Count',50,plotY+120,8);y=plotY-45;
+    }
+    need(70);text('Detailed results ('+rows.length+' records)',32,y,12);y-=22;
+    const colW=(W-64)/columns.length;
+    const header=()=>{rect(32,y-8,W-64,26,'0.93 0.95 0.98');columns.forEach((c,i)=>{wrap(c.label,Math.max(9,Math.floor(colW/4.3))).slice(0,2).forEach((line,j)=>text(line,37+i*colW,y+7-j*10,8));});y-=28;};header();
+    rows.forEach((r,ri)=>{const cells=columns.map(c=>wrap(c.export?c.export(r[c.key],r):r[c.key],Math.max(8,Math.floor(colW/4.3))));const height=Math.max(...cells.map(c=>c.length))*11+12;if(y-height<45){start();header();}if(ri%2===0)rect(32,y-height+8,W-64,height,'0.98 0.985 0.99');cells.forEach((cs,i)=>cs.forEach((line,j)=>text(line,37+i*colW,y-j*11,8)));y-=height;});
+    need(70);y-=10;text('Metric definitions',32,y,12);y-=20;for(const [name,definition] of definitions){const wrapped=wrap(name+': '+definition,160);need(wrapped.length*12+9);wrapped.forEach(t=>{text(t,32,y,8);y-=12;});y-=8;}finish();
+    const objects=[];const add=s=>{objects.push(s);return objects.length;};add('<< /Type /Catalog /Pages 2 0 R >>');add('');add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');const kids=[];
+    for(const content of pages){const contentId=add(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);const pageId=add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentId} 0 R >>`);kids.push(pageId+' 0 R');}objects[1]='<< /Type /Pages /Kids ['+kids.join(' ')+'] /Count '+pages.length+' >>';
+    let pdf='%PDF-1.4\n';const offsets=[0];objects.forEach((o,i)=>{offsets.push(pdf.length);pdf+=(i+1)+' 0 obj\n'+o+'\nendobj\n';});const xref=pdf.length;pdf+='xref\n0 '+(objects.length+1)+'\n0000000000 65535 f \n';offsets.slice(1).forEach(o=>pdf+=String(o).padStart(10,'0')+' 00000 n \n');pdf+='trailer\n<< /Size '+(objects.length+1)+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';return new Blob([pdf],{type:'application/pdf'});
+}
+export function download(blob,name){if(!blob.size)throw new Error('The generated file is empty.');const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=name;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);return blob.size;}
