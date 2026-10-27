@@ -1,0 +1,95 @@
+.desktop-rail.puj-welcome{--puj-blue:#0866ff;--puj-navy:#06143d;--puj-muted:#607596;container-type:inline-size;flex-direction:column;padding:36px 36px 30px;background:#f7fbff;color:var(--puj-navy);border-right:1px solid #e2ecf8;isolation:isolate;gap:26px;min-height:800px;height:100dvh;overflow:hidden}
+.puj-welcome-backdrop{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+.puj-welcome-backdrop img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
+.puj-mobile-backdrop{display:none}
+.puj-brand{position:relative;z-index:3;display:flex;align-items:center;gap:12px;width:fit-content;flex-shrink:0}
+.puj-brand>img{width:54px;height:54px;object-fit:contain;flex-shrink:0}
+.puj-brand>span{display:flex;flex-direction:column;gap:4px}
+.puj-brand strong{font-size:27px;font-weight:800;line-height:1;letter-spacing:-1px}
+.puj-brand small{font-size:8px;font-weight:650;letter-spacing:2px;color:#607596}
+.puj-welcome-body{position:relative;flex:1;min-height:540px}
+.puj-welcome-copy{position:relative;z-index:2;padding-top:44px;width:56%}
+.puj-eyebrow{font-size:9px;font-weight:700;letter-spacing:2.1px;color:#607ca2;line-height:1.7}
+.puj-eyebrow:after{content:"";display:block;width:29px;height:3px;border-radius:2px;background:var(--puj-blue);margin-top:12px}
+.puj-welcome-copy h1{font-size:clamp(40px,7.7cqw,64px);font-weight:800;line-height:1.1;letter-spacing:-2.8px;margin:22px 0 23px;white-space:nowrap;color:var(--puj-navy)}
+.puj-welcome-copy h1 em{font-style:normal;color:var(--puj-blue)}
+.puj-welcome-copy p{font-size:14px;line-height:1.85;color:var(--puj-muted);max-width:275px}
+.puj-route{position:relative;max-width:250px;width:85%;margin-top:28px}
+.puj-route>svg{display:block;width:100%;height:auto;overflow:visible}
+.puj-route>div{display:flex;justify-content:space-between;gap:10px;color:#607596;font-size:7px;font-weight:650;letter-spacing:1.4px}
+.puj-route-jeep{position:absolute;top:20%;left:39%;padding:0 5px;background:#f7fbff;color:#0866ff;transform:rotate(17deg)}
+.puj-route-jeep svg{width:29px;height:29px}
+.puj-welcome-visual{position:absolute;inset:-116px -36px -28px 30%;z-index:0;pointer-events:none}
+.puj-hero-jeepney{position:absolute;width:80%;height:auto;object-fit:contain;bottom:8%;right:1%;filter:drop-shadow(0 17px 10px #385f8533);animation:puj-arrive .7s ease-out both}
+.puj-map-illustration{position:absolute;right:7%;top:12%;width:62%;max-width:270px;padding:7px;background:#ffffff70;border:1px solid #fff;border-radius:23px;box-shadow:0 17px 35px #5a8db62b;transform:rotate(-3deg);backdrop-filter:blur(8px);animation:puj-arrive .7s .08s ease-out both}
+.puj-map-illustration>svg{display:block;width:100%;height:auto;border-radius:17px}
+.puj-live-pill{position:absolute;left:8%;bottom:12px;display:flex;gap:9px;align-items:center;padding:10px 15px;background:#fff;border:1px solid #e3edf9;border-radius:30px;box-shadow:0 6px 20px #4c77a21a;transform:rotate(3deg);white-space:nowrap}
+.puj-live-pill>.material-symbols-outlined{font-size:24px;color:#0866ff}
+.puj-live-pill>div{display:flex;flex-direction:column;gap:3px}
+.puj-live-pill strong{font-size:11px;color:#173b69;font-weight:750}
+.puj-live-pill div span{font-size:8px;color:#607596}
+.puj-map-illustration>small{position:absolute;bottom:-17px;right:0;font-size:7px;letter-spacing:.4px;color:#173b69;transform:rotate(3deg);background:#ffffffd9;padding:2px 5px;border-radius:3px}
+.puj-welcome-footer{position:relative;z-index:3;flex-shrink:0}
+.puj-data-status{display:flex;align-items:center;gap:7px;font-size:8px;font-weight:600;letter-spacing:1.5px;color:#607596;margin:0 0 15px 4px;line-height:1.5}
+.puj-data-status i{width:6px;height:6px;border-radius:50%;background:#24a87a;box-shadow:0 0 0 3px #24a87a12;flex-shrink:0}
+.puj-account{display:flex;align-items:center;gap:15px;min-height:96px;padding:21px;background:#ffffffed;border:1px solid #d8e7fb;border-radius:21px;box-shadow:0 12px 34px #244f8b0d;backdrop-filter:blur(10px);transition:background .18s,border-color .18s,box-shadow .18s}
+.puj-account:hover{background:#f7fbff;border-color:#94bdff;box-shadow:0 12px 32px #244f8b18}
+.puj-account:focus-visible,.puj-brand:focus-visible{outline:3px solid #0866ff;outline-offset:5px}
+.puj-account-icon{width:49px;height:49px;flex-shrink:0;border-radius:14px;background:#eaf2ff;color:#0866ff;display:grid;place-items:center}
+.puj-account-icon svg{width:25px;height:25px}
+.puj-account-copy{min-width:0;display:flex;flex-direction:column;gap:5px}
+.puj-account-copy strong{font-size:15px;font-weight:750;letter-spacing:-.3px}
+.puj-account-copy>span{font-size:10px;line-height:1.6;color:#607596}
+.puj-account-arrow{margin-left:auto;width:38px;height:38px;border-radius:50%;background:#0866ff;color:white;display:grid;place-items:center;flex-shrink:0}
+.puj-account-arrow svg{width:19px;height:19px}
+@keyframes puj-arrive{from{opacity:0;translate:0 10px}to{opacity:1;translate:0 0}}
+@container(max-width:580px){
+ .puj-welcome-body{min-height:780px;display:flex;flex-direction:column}
+ .puj-welcome-copy{width:100%;padding-top:16px}
+ .puj-welcome-copy h1{font-size:clamp(43px,11.8cqw,64px)}
+ .puj-welcome-copy p{max-width:290px}
+ .puj-route{margin-top:18px;width:78%}
+ .puj-welcome-visual{position:relative;inset:auto;min-height:330px;flex:1;margin:20px -36px -15px}
+ .puj-welcome-backdrop{display:none}
+ .puj-mobile-backdrop{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:right center;pointer-events:none}
+ .puj-map-illustration{width:47%;right:10%;top:0;max-width:220px}
+ .puj-hero-jeepney{width:84%;max-width:440px;right:5%;bottom:0}
+ .puj-account{padding:17px 14px;gap:10px}
+ .puj-account-copy strong{font-size:14px}
+ .puj-account-copy>span{font-size:9px}
+ .puj-account-icon{width:42px;height:42px}
+ .puj-account-arrow{width:33px;height:33px}
+}
+@media(min-width:1000px){
+ .desktop-rail.puj-welcome{display:flex;position:sticky;top:0;height:100dvh;min-height:0;padding:24px 32px;gap:18px;overflow:clip}
+ .puj-brand>img{width:48px;height:48px}
+ .puj-welcome-body{min-height:0}
+ .puj-welcome-copy{padding-top:min(18px,1.8dvh)}
+ .puj-welcome-copy h1{font-size:min(64px,7.7cqw,7dvh);margin:16px 0}
+ .puj-welcome-copy p{font-size:13px;line-height:1.7}
+ .puj-route{margin-top:18px;max-width:220px}
+ .puj-account{min-height:80px;padding:15px}
+ .puj-data-status{margin-bottom:10px}
+ .puj-welcome-visual{inset:-90px -32px -18px 30%}
+ .puj-hero-jeepney{max-height:48dvh}
+ @container(max-width:580px){
+  .puj-welcome-copy{padding-top:0}
+  .puj-welcome-copy h1{font-size:min(44px,11.8cqw,6dvh)}
+  .puj-welcome-visual{position:relative;inset:auto;min-height:0;flex:1;margin:12px -32px 0}
+  .puj-hero-jeepney{height:100%;max-height:100%;width:84%;right:5%;bottom:0}
+  .puj-map-illustration{width:36%;max-width:150px;top:0;right:5%}
+ }
+}
+@media(min-width:1000px) and (max-height:700px){
+ .puj-route{margin-top:10px;max-width:170px}
+ .puj-welcome-copy h1{margin:12px 0}
+ .puj-map-illustration{max-width:200px}
+ @container(max-width:580px){.puj-map-illustration{display:none}}
+}
+@media(max-width:999px){
+ .desktop-rail.puj-welcome{display:none}
+ .desktop-rail.puj-welcome.puj-welcome-mobile{display:flex;position:relative;height:auto;min-height:0;width:100%;max-width:560px;margin:auto;padding:25px 24px 30px;border:0}
+ .puj-welcome-mobile .puj-welcome-body{min-height:740px}
+ .puj-welcome-mobile .puj-welcome-visual{margin-left:-24px;margin-right:-24px}
+}
+@media(prefers-reduced-motion:reduce){.puj-welcome *{animation:none!important;transition:none!important}}

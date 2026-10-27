@@ -146,4 +146,27 @@ class TripTrackingTest extends TransportDatabaseTest
         }
         $this->actingAs($driver)->postJson('/api/transport/trips/1/end', ['destination' => 'Laoag Public Market'])->assertOk();
     }
+
+    public function test_reused_vehicle_keeps_passenger_journeys_bound_to_the_original_trip(): void
+    {
+        $migration = require database_path('migrations/2026_10_25_000200_add_analytics_records.php');
+        $migration->up();
+        $driver = $this->assignment();
+        $this->start($driver)->assertOk();
+        $passenger = $this->user('Passenger');
+        DB::table('Passengers')->insert(['passenger_id' => 1, 'user_id' => $passenger->getKey()]);
+        DB::table('Stops')->insert([
+            ['stop_id' => 1, 'route_id' => 1, 'stop_name' => 'Batac Terminal', 'latitude' => 18.0553, 'longitude' => 120.5636],
+            ['stop_id' => 2, 'route_id' => 1, 'stop_name' => 'Laoag Public Market', 'latitude' => 18.1878, 'longitude' => 120.5931],
+        ]);
+        $this->actingAs($passenger)->postJson('/api/transport/journeys', ['request_id' => (string) Str::uuid(), 'trip_id' => 1, 'boarding_stop_id' => 1, 'destination_stop_id' => 2])->assertOk();
+        $this->actingAs($driver)->postJson('/api/transport/trips/1/end', ['destination' => 'Laoag Public Market'])->assertOk();
+        $this->actingAs($passenger)->getJson('/api/transport/snapshot')->assertJsonCount(0, 'locations')->assertJsonPath('journeys.0.status', 'Active');
+        DB::table('Trips')->insert(['trip_id' => 2, 'driver_id' => 1, 'vehicle_id' => 1, 'route_id' => 1, 'start_time' => '2026-10-25 18:00:00', 'status' => 'Scheduled']);
+        $this->actingAs($driver)->postJson('/api/transport/trips/2/start', ['vehicle_id' => 1, 'route_id' => 1, 'point' => $this->point(['latitude' => 18.19])])->assertOk();
+        $this->actingAs($passenger)->getJson('/api/transport/snapshot')
+            ->assertJsonCount(1, 'locations')->assertJsonPath('locations.0.trip_id', 2)
+            ->assertJsonPath('journeys.0.trip_id', 1)->assertJsonPath('journeys.0.trip.status', 'Completed');
+        $this->actingAs($this->user('Admin'))->getJson('/api/admin/analytics')->assertOk()->assertJsonPath('locations.0.trip_id', 2);
+    }
 }

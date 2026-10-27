@@ -10,52 +10,38 @@
 .coordinate-stop-picker{position:absolute;left:12px;top:55px;font:9px Inter,Arial,sans-serif;color:#5e7696;background:#fffffff0;border:1px solid #dce5f0;border-radius:5px;padding:7px 9px;max-width:calc(100% - 75px)}
 .coordinate-stop-picker select{display:block;margin-top:4px;min-height:31px;max-width:200px;width:100%;border:0;background:white;font:11px Inter,Arial,sans-serif;color:#365785;padding:5px 22px 5px 0;box-shadow:none}
 
-/* Hide Mapbox zoom in (+) and zoom out (-) controls */
-.mapboxgl-ctrl-zoom-in,
-.mapboxgl-ctrl-zoom-out,
-.mapboxgl-ctrl-group button.mapboxgl-ctrl-zoom-in,
-.mapboxgl-ctrl-group button.mapboxgl-ctrl-zoom-out,
-.mapboxgl-ctrl-group:has(.mapboxgl-ctrl-zoom-in) {
-    display: none !important;
-}
+/* Hide only the unwanted plus button; retain other controls and zoom gestures. */
+.mapbox-wrap .mapboxgl-ctrl-zoom-in { display:none!important; }
 
-/* Demo simulation styling */
-.mb-vehicle.simulation{
-    background:#0d9488!important;
-    border-color:#ccfbf1!important;
-    position:relative;
-    display:grid;
-    place-items:center;
-    transition:transform 0.08s linear;
+/* Never animate Mapbox's positioning transform or put a border on its anchor. */
+.mapbox-wrap .mb-vehicle,
+.mapbox-wrap .mb-vehicle.simulation,
+.mapbox-wrap .mb-vehicle.stale {
+    width:42px;height:42px;padding:0;border:0!important;background:transparent!important;
+    box-shadow:none;border-radius:0;color:white;display:grid;place-items:center;
+    transition:none;cursor:pointer;
 }
-
-/* Ensure only the SVG icon rotates, while the marker element and SIM badge stay upright */
-.mb-vehicle.simulation svg{
-    display:block;
-    width:22px;
-    height:22px;
-    transform-origin:center center;
-    transition:transform 0.12s linear;
-    pointer-events:none;
+.mapbox-wrap .mb-vehicle-scale {
+    box-sizing:border-box;
+    position:relative;display:grid;place-items:center;width:42px;height:42px;
+    border:3px solid white;border-radius:11px;background:#2463eb;
+    box-shadow:0 3px 12px #142a4933;transform-origin:center;
 }
-
-/* Upright SIM badge positioned on marker */
-.mb-vehicle.simulation::after{
-    content:"SIM";
-    position:absolute;
-    bottom:-5px;
-    right:-5px;
-    background:#0f766e;
-    color:#fff;
-    font-size:8px;
-    font-weight:700;
-    padding:1px 3px;
-    border-radius:3px;
-    border:1px solid #fff;
-    line-height:1;
-    pointer-events:none;
-    transform:none!important;
+.mapbox-wrap .simulation .mb-vehicle-scale { background:#0d9488;border-color:#ccfbf1; }
+.mapbox-wrap .stale .mb-vehicle-scale { background:#bb801d;border-color:#fff4d9; }
+.mapbox-wrap .mb-vehicle-art {
+    display:block;width:24px;height:24px;transform-origin:50% 50%;transition:none;pointer-events:none;
 }
+.mapbox-wrap .mb-vehicle-image {
+    display:block;width:24px;height:24px;object-fit:contain;
+    transform:rotate(-90deg);transform-origin:center;pointer-events:none;
+}
+.mb-sim-badge {
+    position:absolute;bottom:-5px;right:-5px;background:#0f766e;color:white;
+    font-size:8px;font-weight:700;padding:1px 3px;border-radius:3px;
+    border:1px solid white;line-height:1;pointer-events:none;
+}
+.mb-recenter { display:grid;place-items:center; }
 
 /* Popup viewport constraint & responsive phone styling */
 .mapboxgl-popup{

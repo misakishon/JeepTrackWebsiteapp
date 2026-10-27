@@ -153,6 +153,7 @@ class DemoSimulationTest extends TransportDatabaseTest
 
         $this->assertArrayHasKey('simulatedVehicles', $data);
         $this->assertCount(5, $data['simulatedVehicles']);
+        $this->assertArrayNotHasKey('driver_email', $data['simulatedVehicles'][0]);
         $this->assertSame('Demo simulation — not real GPS', $data['simulatedVehicles'][0]['simulation_label']);
     }
 
@@ -191,5 +192,32 @@ class DemoSimulationTest extends TransportDatabaseTest
         $last = end($waypoints);
         $this->assertEqualsWithDelta($last[1], $pos100['latitude'], 0.0001);
         $this->assertEqualsWithDelta($last[0], $pos100['longitude'], 0.0001);
+    }
+
+    public function test_ended_trips_disappear_from_simulation_and_real_gps_takes_priority(): void
+    {
+        $service = app(DemoSimulationService::class);
+        $seeded = $service->seedDemoData();
+        $tripId = $seeded['trips'][0]['trip_id'];
+        DB::table('Trips')->where('trip_id', $tripId)->update(['status' => 'Completed']);
+        $this->assertCount(4, $service->getSimulatedPositions());
+        DB::table('Trips')->where('trip_id', $tripId)->update(['status' => 'In Progress']);
+        $trip = Trip::find($tripId);
+        DB::table('Trip_GPS_Points')->insert(['trip_id' => $tripId, 'driver_id' => $trip->driver_id, 'vehicle_id' => $trip->vehicle_id, 'client_point_id' => (string) \Illuminate\Support\Str::uuid(), 'latitude' => 18.0553, 'longitude' => 120.5636, 'accuracy_m' => 5, 'captured_at' => now()->subMinutes(5), 'received_at' => now()->subMinutes(5)]);
+        $this->assertCount(4, $service->getSimulatedPositions());
+        $data = app(TransportDatabase::class)->forUser($this->user('Passenger'));
+        $this->assertCount(1, $data['locations']);
+        $this->assertTrue($data['locations'][0]['is_stale']);
+        $this->assertNotContains($tripId, array_column($data['simulatedVehicles'], 'trip_id'));
+    }
+
+    public function test_simulation_is_disabled_for_non_sample_data_and_unassigned_drivers(): void
+    {
+        $service = app(DemoSimulationService::class);
+        $service->seedDemoData();
+        $driver = $this->user('Driver');
+        $this->assertSame([], app(TransportDatabase::class)->forUser($driver)['simulatedVehicles']);
+        config(['transport.sample_data' => false]);
+        $this->assertSame([], $service->getSimulatedPositions());
     }
 }

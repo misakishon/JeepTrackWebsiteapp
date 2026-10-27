@@ -14,3 +14,20 @@
 .ad-nav-row{position:relative}.ad-subnav-toggle{position:absolute;right:5px;top:3px;width:35px;height:35px;border:0;background:none;color:#9ab0ce!important;display:grid;place-items:center;border-radius:5px}.ad-subnav-toggle .ad-icon{width:13px;height:13px;transition:transform .15s}.ad-subnav-toggle[aria-expanded="false"] .ad-icon{transform:rotate(-90deg)}.ad-nav-row:has(.active) .ad-subnav-toggle{color:white!important}.ad-nav-row:has(.ad-subnav-toggle) .ad-nav-item{padding-right:44px}
 /* Supplied Jeepney Tracker logo in the admin workspace brand. */
 .ad-brand>span{background:transparent;box-shadow:none;width:48px;height:48px;border-radius:0;flex-shrink:0}.ad-brand>span>img{width:48px;height:48px;object-fit:contain;display:block}.ad-brand{gap:10px;font-size:16px}.ad-brand small{font-size:5px;letter-spacing:1.5px}
+
+/* The hourly chart owns the complete second row in every dashboard grid. */
+.ad-chart-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.ad-chart-grid>.ad-chart-hours{grid-column:1 / -1;display:flex;flex-direction:column;height:320px;min-height:0}
+.ad-chart-hours>.ad-panel-head{flex-shrink:0;padding:18px 22px 0;min-height:48px}
+.ad-chart-hours .ad-bars-responsive{container-type:inline-size;width:100%;height:100%;min-height:0;flex:1;padding:20px 22px 18px;justify-content:flex-start}
+.ad-chart-hours .ad-vbars{width:100%;height:auto;min-height:0;flex:1;gap:clamp(2px,.7vw,10px);padding:0 6px 25px;align-items:stretch}
+.ad-chart-hours .ad-vbars .ad-bar-row{position:relative;gap:0;min-width:0}
+.ad-chart-hours .ad-vbars .ad-bar-track{height:100%;max-width:28px}
+.ad-chart-hours .ad-vbars .ad-hour-label{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);width:auto;font-size:10px;line-height:16px;letter-spacing:0;white-space:nowrap}
+.ad-chart-hours .ad-axis-note{margin:8px 0 0;font-size:10px;line-height:16px}
+.ad-chart-hours .ad-legend{margin-top:8px;font-size:10px;line-height:14px}
+.ad-chart-hours .ad-empty{min-height:0;flex:1;padding:20px 22px}
+@container(max-width:950px){.ad-bars-responsive .ad-bar-row:nth-child(2n) .ad-hour-label{visibility:hidden}}
+@container(max-width:500px){.ad-bars-responsive .ad-bar-row:not(:nth-child(4n + 1)) .ad-hour-label{visibility:hidden}}
+@media(max-width:900px){.ad-chart-grid,.ad-chart-grid.overview{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.ad-chart-grid{gap:20px}.ad-chart-grid>.ad-chart-hours{height:300px}.ad-chart-hours>.ad-panel-head{padding-inline:18px}.ad-chart-hours .ad-bars-responsive{padding-inline:18px}}

@@ -5,6 +5,7 @@ use App\Http\Controllers\TransportDatabaseController;
 use App\Http\Controllers\TripTrackingController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\JourneyRecordsController;
+use App\Http\Controllers\DriverAccountsController;
 use App\Services\TransportDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -15,6 +16,8 @@ Route::post('/login', [TransportAuthController::class, 'login'])->middleware('th
 Route::post('/register', [TransportAuthController::class, 'register'])->middleware('throttle:5,1');
 Route::post('/logout', [TransportAuthController::class, 'logout'])->middleware('auth');
 Route::middleware('auth')->group(function () {
+    Route::get('/api/admin/drivers', [DriverAccountsController::class, 'index']);
+    Route::post('/api/admin/drivers', [DriverAccountsController::class, 'store'])->middleware('throttle:20,1');
     Route::post('/api/transport/journeys', [JourneyRecordsController::class, 'board']);
     Route::post('/api/transport/journeys/{id}/arrive', [JourneyRecordsController::class, 'arrive']);
     Route::post('/api/transport/journeys/{id}/correct', [JourneyRecordsController::class, 'correct']);

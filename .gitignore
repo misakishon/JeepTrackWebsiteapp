@@ -45,3 +45,11 @@ Thumbs.db
 /bootstrap/cache/*.php
 *.class
 /scratch/
+
+# Tooling and analysis artifacts
+/graphify-out/
+/.21st/
+
+# Root temporary/source asset captures (tracked assets belong in public/images/)
+/*.png
+

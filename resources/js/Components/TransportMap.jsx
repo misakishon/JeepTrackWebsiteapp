@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import roadRoutes from '../roadRoutes.json';
 import './TransportMap.css';
+import { createVehicleElement, updateVehicleHeading, renderVehicleMarkers } from './vehicleMarker';
 
 // Mapbox supplies the base map.
 const SDK = 'https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js';
@@ -306,6 +307,7 @@ export default function TransportMap({
     const glRef = useRef(null);
     const vehicleMarker = useRef(null);
     const vehiclePopup = useRef(null);
+    const fleetMarkers = useRef({});
     const simMarkersRef = useRef({});
     const simPopupsRef = useRef({});
     const simStatesRef = useRef({});
@@ -329,11 +331,13 @@ export default function TransportMap({
     );
     const knownLocation = mapData?.location;
     const simVehicles = mapData?.simulatedVehicles || [];
+    const liveVehicles = mapData?.liveVehicles || [];
 
     const realPoints = [
         ...knownStops.map(p => [Number(p.longitude), Number(p.latitude)]),
         ...(knownLocation ? [[Number(knownLocation.longitude), Number(knownLocation.latitude)]] : []),
-        ...simVehicles.map(v => [Number(v.longitude), Number(v.latitude)])
+        ...simVehicles.map(v => [Number(v.longitude), Number(v.latitude)]),
+        ...liveVehicles.map(v => [Number(v.longitude), Number(v.latitude)])
     ];
 
     // Expose developer / test controls
@@ -395,6 +399,7 @@ export default function TransportMap({
                 attributionControl: true
             });
             mapRef.current = instance;
+            instance.on('render', () => renderVehicleMarkers(instance));
             window.__transportMap = instance;
 
             const boundsPoints = (realPoints && realPoints.length > 0)
@@ -409,11 +414,18 @@ export default function TransportMap({
             instance.addControl(new gl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false, showUserHeading: false }), 'top-right');
 
             const addStopMarker = (point, label, vehicle = false) => {
-                const element = document.createElement('button');
+                const element = vehicle ? createVehicleElement() : document.createElement('button');
                 element.type = 'button';
-                element.className = vehicle ? 'mb-vehicle' : 'mb-stop';
+                if (!vehicle) element.className = 'mb-stop';
                 element.setAttribute('aria-label', label);
-                element.innerHTML = vehicle ? '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 3h14v14h-1v4h-3v-3H9v3H6v-4H5V3Zm2 2v6h10V5H7Zm1 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/></svg>' : '';
+                if (vehicle) {
+                    const index = activeRoadLine.indexOf(point);
+                    const next = activeRoadLine[index + 1];
+                    if (next) {
+                        updateVehicleHeading(element, point);
+                        updateVehicleHeading(element, next);
+                    }
+                }
                 const popup = new gl.Popup({ offset: 22, maxWidth: '280px' }).setText(label);
                 new gl.Marker({ element, anchor: 'center' }).setLngLat(point).setPopup(popup).addTo(instance);
             };
@@ -493,6 +505,8 @@ export default function TransportMap({
             Object.values(simMarkersRef.current).forEach(m => m.remove());
             simMarkersRef.current = {};
             simPopupsRef.current = {};
+            Object.values(fleetMarkers.current).forEach(record => record.marker.remove());
+            fleetMarkers.current = {};
             if (instance) instance.remove();
             mapRef.current = null;
             vehicleMarker.current = null;
@@ -508,7 +522,10 @@ export default function TransportMap({
         longitude: knownLocation.longitude,
         timestamp: knownLocation.timestamp,
         is_stale: knownLocation.is_stale,
-        point_id: knownLocation.point_id
+        point_id: knownLocation.point_id,
+        heading: knownLocation.heading,
+        bearing: knownLocation.bearing,
+        speed: knownLocation.speed
     } : null);
 
     useEffect(() => {
@@ -525,15 +542,14 @@ export default function TransportMap({
         const label = (mapData.vehicleLabel || 'Vehicle') + ' · ' + (knownLocation.is_stale ? 'stale GPS, last known position' : 'live GPS') + ' · ' + new Date(knownLocation.timestamp).toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
 
         if (!vehicleMarker.current) {
-            const element = document.createElement('button');
-            element.type = 'button';
-            element.className = 'mb-vehicle';
-            element.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 3h14v14h-1v4h-3v-3H9v3H6v-4H5V3Zm2 2v6h10V5H7Zm1 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/></svg>';
+            const element = createVehicleElement();
             vehiclePopup.current = new gl.Popup({ offset: 22, maxWidth: '280px' });
             vehicleMarker.current = new gl.Marker({ element, anchor: 'center' }).setPopup(vehiclePopup.current).setLngLat(point).addTo(map);
         } else {
             vehicleMarker.current.setLngLat(point);
         }
+        updateVehicleHeading(vehicleMarker.current.getElement(), point, knownLocation.heading ?? knownLocation.bearing, Number(knownLocation.speed) === 0 && knownLocation.speed != null);
+        map.triggerRepaint();
         vehicleMarker.current.getElement().setAttribute('aria-label', label);
         vehicleMarker.current.getElement().classList.toggle('stale', !!knownLocation.is_stale);
         vehiclePopup.current.setText(label);
@@ -542,6 +558,37 @@ export default function TransportMap({
             map.easeTo({ center: point, zoom: Math.max(map.getZoom(), 14), duration: 800 });
         }
     }, [locationKey, status, dataKey]);
+
+    // Fleet views show the same canonical trip fixes as individual tracking views.
+    const liveKey = JSON.stringify(liveVehicles);
+    useEffect(() => {
+        if (status !== 'ready' || !mapRef.current || !glRef.current) return;
+        const map = mapRef.current, gl = glRef.current;
+        const ids = new Set(liveVehicles.map(v => String(v.trip_id)));
+        Object.entries(fleetMarkers.current).forEach(([id, record]) => {
+            if (!ids.has(id)) { record.marker.remove(); delete fleetMarkers.current[id]; }
+        });
+        liveVehicles.forEach(v => {
+            const id = String(v.trip_id), point = [Number(v.longitude), Number(v.latitude)];
+            if (!point.every(Number.isFinite)) return;
+            const stale = v.is_stale || Date.now() - new Date(v.timestamp).getTime() > 30000;
+            const label = `${v.vehicleLabel || 'Vehicle'} · ${stale ? 'stale GPS, last known position' : 'live GPS'}`;
+            let record = fleetMarkers.current[id];
+            if (!record) {
+                const element = createVehicleElement();
+                const popup = new gl.Popup({ offset: 22, maxWidth: '280px' });
+                record = { marker: new gl.Marker({ element, anchor: 'center' }).setPopup(popup).setLngLat(point).addTo(map), popup };
+                fleetMarkers.current[id] = record;
+            }
+            record.marker.setLngLat(point);
+            const element = record.marker.getElement();
+            element.setAttribute('aria-label', label);
+            element.classList.toggle('stale', !!stale);
+            updateVehicleHeading(element, point, v.heading ?? v.bearing, v.speed != null && Number(v.speed) === 0);
+            record.popup.setText(label);
+        });
+        map.triggerRepaint();
+    }, [liveKey, status, dataKey]);
 
     // Simulated moving vehicles update and real-time slow road animation
     const simKey = JSON.stringify(simVehicles.map(v => v.vehicle_id));
@@ -590,12 +637,9 @@ export default function TransportMap({
             }
 
             if (!simMarkersRef.current[id]) {
-                const element = document.createElement('button');
-                element.type = 'button';
-                element.className = 'mb-vehicle simulation';
+                const element = createVehicleElement(true);
                 const label = `${v.plate_number} · ${v.route_name} · Demo simulation — not real GPS`;
                 element.setAttribute('aria-label', label);
-                element.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 3h14v14h-1v4h-3v-3H9v3H6v-4H5V3Zm2 2v6h10V5H7Zm1 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/></svg>';
 
                 const popupContent = document.createElement('div');
                 const initialSpeedKmh = Math.max(10, Math.min(30, Number(v.speed || v.sim_speed || window.__simSpeedKmh || simulationSpeed || DEFAULT_SPEED_KMH)));
@@ -620,11 +664,7 @@ export default function TransportMap({
                     map.easeTo({ center: marker.getLngLat(), duration: 250 });
                 });
 
-                // Rotate only the SVG icon inside; the marker container and "SIM" badge stay upright
-                const svg = element.querySelector('svg');
-                if (svg) {
-                    svg.style.transform = `rotate(${Math.round(pt.bearing)}deg)`;
-                }
+                updateVehicleHeading(element, pt.coordinate, pt.bearing);
 
                 simMarkersRef.current[id] = marker;
                 simPopupsRef.current[id] = { popup, contentElement: popupContent, lastHtml: popupContent.innerHTML };
@@ -710,11 +750,7 @@ export default function TransportMap({
                 state.bearing = pt.bearing;
                 marker.setLngLat(pt.coordinate);
 
-                // Rotate only the inner SVG icon to follow travel direction; keep the "SIM" badge upright
-                const svg = marker.getElement().querySelector('svg');
-                if (svg) {
-                    svg.style.transform = `rotate(${Math.round(pt.bearing)}deg)`;
-                }
+                updateVehicleHeading(marker.getElement(), pt.coordinate, pt.bearing, state.isPaused || state.isFinished);
 
                 // Update popup if DOM content has changed
                 const popupRecord = simPopupsRef.current[id];
@@ -762,7 +798,7 @@ export default function TransportMap({
     const mapLabel = mapData
         ? (knownLocation
             ? (knownLocation.is_stale ? 'STALE GPS · LAST KNOWN POSITION' : 'LIVE VEHICLE GPS')
-            : (hasSim
+            : (liveVehicles.length ? `${liveVehicles.length} VEHICLES · RECORDED GPS${hasSim ? ' · DEMO SIMULATION ALSO SHOWN' : ''}` : hasSim
                 ? (simVehicles.length > 1 ? `${simVehicles.length} MOVING JEEPNEYS · DEMO SIMULATION — NOT REAL GPS` : 'DEMO SIMULATION — NOT REAL GPS')
                 : 'ROUTE STOPS · VEHICLE GPS UNAVAILABLE'))
         : 'DEMO ROUTE & VEHICLE · NOT LIVE GPS';
@@ -774,7 +810,7 @@ export default function TransportMap({
                 <>
                     <span className={'map-label ' + (hasSim && !knownLocation ? 'simulation' : '')}>{mapLabel}</span>
                     <button className="mb-recenter" aria-label={mapData?.followVehicle && knownLocation ? 'Recenter vehicle' : 'Recenter route'} onClick={recenter}>
-                        ⌖
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M20 4 14 20 10 14 4 10Z" /></svg>
                     </button>
                 </>
             )}
@@ -787,7 +823,7 @@ export default function TransportMap({
             )}
             {status === 'error' && (
                 <div className="mapbox-fallback">
-                    {fallback || (mapData && <StopPreview stops={knownStops} location={knownLocation} simulatedVehicles={simVehicles} />)}
+                    {fallback || (mapData && <StopPreview stops={knownStops} location={knownLocation} simulatedVehicles={simVehicles} liveVehicles={liveVehicles} />)}
                     <div className="mapbox-error" role="status">
                         <span>{mapData ? 'Mapbox unavailable · coordinate preview' : 'Mapbox unavailable · illustrative fallback'}</span>
                         <button onClick={() => retry(x => x + 1)}>Retry</button>
@@ -798,12 +834,13 @@ export default function TransportMap({
     );
 }
 
-function StopPreview({ stops, location, simulatedVehicles = [] }) {
+function StopPreview({ stops, location, simulatedVehicles = [], liveVehicles = [] }) {
     const [zoom, Z] = useState(1);
     const [selected, S] = useState('');
     const points = [
         ...stops.map(s => ({ ...s, label: s.label || s.stop_name || 'Route stop' })),
         ...(location ? [{ ...location, label: 'Latest vehicle location', vehicle: true }] : []),
+        ...liveVehicles.map(v => ({ ...v, label: `${v.vehicleLabel || 'Vehicle'} · Latest recorded GPS`, vehicle: true })),
         ...simulatedVehicles.map(v => ({
             ...v,
             label: `${v.plate_number} (${v.route_name}) · Demo simulation — not real GPS`,
@@ -865,7 +902,7 @@ function StopPreview({ stops, location, simulatedVehicles = [] }) {
                 </label>
             )}
             <div className="map-controls">
-                <button aria-label="Recenter route" onClick={() => Z(1)}>⌖</button>
+                <button aria-label="Recenter route" onClick={() => Z(1)}>↺</button>
             </div>
             <span className="map-selected">
                 {selected || (simulatedVehicles.length ? 'Demo simulation — not real GPS' : (location ? 'Latest recorded vehicle point' : 'Route stops'))}

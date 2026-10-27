@@ -246,6 +246,9 @@ class DemoSimulationService
      */
     public function getSimulatedPositions(?int $forVehicleId = null): array
     {
+        if (! config('transport.sample_data')) {
+            return [];
+        }
         $now = CarbonImmutable::now('UTC');
         $currentTimeSeconds = microtime(true);
         $results = [];
@@ -275,6 +278,12 @@ class DemoSimulationService
                 ->where('status', 'In Progress')
                 ->first();
 
+            // Real trip fixes always take priority, including a stale last fix.
+            // A completed or cancelled demo assignment must stop moving too.
+            if (! $trip || (Schema::hasTable('Trip_GPS_Points') && DB::table('Trip_GPS_Points')->where('trip_id', $trip->trip_id)->exists())) {
+                continue;
+            }
+
             $waypoints = $this->getRouteWaypoints($cfg['route_id']);
             if (empty($waypoints)) {
                 continue;
@@ -297,7 +306,6 @@ class DemoSimulationService
                 'vehicle_id' => (int) $vehicle->vehicle_id,
                 'driver_id' => (int) $driver->driver_id,
                 'driver_name' => $user->fullname,
-                'driver_email' => $user->email,
                 'plate_number' => $vehicle->plate_number,
                 'vehicle_type' => $vehicle->type ?: 'Jeepney',
                 'capacity' => (int) $vehicle->capacity,
