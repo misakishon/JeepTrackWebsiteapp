@@ -67,3 +67,9 @@ php artisan test --filter='AccountConnectionTest|TripTrackingTest|DemoSimulation
 ```
 
 Other checks: `node --test tests/ui/*.test.mjs`, `npm run build`, and `php artisan test --compact` for the complete suite including the known starter-test failures.
+
+## Follow-up: driver route choice (28 October 2026)
+
+Driver-side route choice is now implemented. Home/Trips can save a registered route and available vehicle as a scheduled trip, and Trip Details can change an owned scheduled trip's route. It needs no Admin approval. Active routes remain locked, other drivers' reserved vehicles are excluded, repeated saves do not duplicate the pending trip, and GPS is still required to start/publish the trip. Admin vehicle/route/trip management remains a separate unfinished workflow. See the README for current instructions.
+
+The new browser run used a separate temporary MySQL database and controlled GPS callbacks. It verified changing a scheduled Batac-Paoay trip to Batac-Laoag, starting it and receiving the selected route/GPS as a passenger. It also verified a newly created driver planning and starting their own trip without any prior assignment. Relevant backend suites now pass 101 tests (810 assertions), and all 12 UI unit tests pass. These focused results do not imply the previously documented legacy starter-test failures have been fixed.

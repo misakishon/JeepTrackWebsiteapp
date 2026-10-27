@@ -23,9 +23,12 @@ flowchart TD
     B -->|Admin| AC[Drivers: Add driver account]
     AC --> DL[Driver signs in with the supplied credentials]
     DL --> D
-    B -->|Driver| D[Assigned trips]
+    B -->|Driver| D[Choose route or review own trips]
     B -->|Passenger| E[Search routes and stops]
     D --> F[Confirm vehicle and route]
+    D --> RS[Select route and available jeepney]
+    RS --> SS[Save scheduled trip]
+    SS --> F
     F --> G[Grant location permission and start trip]
     G --> H[Save active trip and trip-linked GPS]
     H --> I[Passenger tracks vehicle on map]
@@ -57,14 +60,14 @@ Drivers can access their assigned trips and vehicle information. Passengers can 
 The bottom navigation is **Home · Trips · Tracking · Profile**.
 
 1. Sign in using the driver account created by the administrator.
-2. Open **Trips** and review an existing assignment's vehicle, route, stops and departure time. An account with no assignments cannot start a trip.
-3. Confirm the assigned vehicle and route, then allow location access and select **Start Trip**.
+2. Open **Home** or **Trips → Set your route**. Select a registered route and the plate number of the available jeepney you will drive, then select **Save route**. This saves a scheduled trip; repeated saves for the same pending driver/vehicle trip reuse that record. Drivers with no previous assignments can use this flow too.
+3. Review Trip Details, stops and vehicle. To change an existing scheduled trip, use its **Set your route** form and **Save route**. Confirm the selected vehicle and route, allow location access, and select **Start Trip** when ready.
 4. The server saves the active trip and first valid GPS point together. Conflicting active trips are rejected. Passengers can now see the active trip and its recorded location.
 5. Keep the browser open and visible. Valid GPS fixes are uploaded approximately every five seconds and are associated with the driver, vehicle and trip.
 6. Report a delay without ending the trip, when safely stopped.
 7. Confirm the destination to end the trip. Actual arrival is recorded and public GPS sharing stops. Ending a trip never fabricates passenger alighting records; passengers confirm their own actual arrival.
 
-**Route choice today:** drivers can start only their assigned trips. If a driver is assigned **Batac–Paoay**, they cannot change that trip to **Batac–Laoag**. The server rejects a vehicle or route that does not match the assignment. There is currently no driver route-selection/request screen and no Admin screen for creating or reassigning trips. The existing Admin schedule editor changes departure/arrival times and direction, not the assigned route, driver or vehicle.
+**Route choice today:** drivers may select any registered route before starting a trip. For example, open a scheduled **Batac–Paoay** trip, select **Batac–Laoag** under **Set your route**, and save. No per-trip Admin approval is required. The existing trip keeps its vehicle; creating a new pending trip allows selection of an available jeepney. Vehicles on active trips or reserved by another driver's scheduled trip cannot be selected. Once a trip is active, its route is locked until it ends. Completed/cancelled trips cannot be rewritten. The Admin vehicle/route/trip assignment-management screen is still not implemented.
 
 Browser tracking can pause when the phone is locked or the page is in the background. Physical-phone GPS requires HTTPS and permission; localhost is suitable for desktop development. Passenger maps label stale GPS and unavailable ETA.
 
@@ -88,23 +91,22 @@ Tracking a vehicle does not reserve a seat. Seat availability and ETA are not in
 
 1. Sign in with an existing Admin account.
 2. Open **Drivers → Add driver** to create a driver's login and license record. The directory includes drivers who have no trips yet.
-3. Review existing driver, vehicle, route and trip records. **Assignment management is not implemented:** creating a driver does not automatically give them a trip, and the current directory screens cannot create or reassign vehicle/route/trip records.
+3. Review existing driver, vehicle, route and trip records. Creating a driver does not automatically create a trip; the driver can now select a route and an available jeepney on their own Home/Trips screen. Admin vehicle/route/trip creation and reassignment screens remain unimplemented.
 4. Use **Live Tracking** to monitor recorded trip GPS. Demo simulations are labeled separately and stop appearing when a real GPS record takes priority or the demo assignment ends.
 5. Use **Settings** to update supported analytics settings, vehicle availability and the schedule of an existing upcoming trip. Schedules cannot be changed after departure.
 6. Review trips, journeys, routes, drivers and vehicles in Analytics. Apply date/route filters and inspect recorded data rather than assuming missing observations are zero.
 7. Open **Feedback** to review passenger submissions, save a response, add private internal notes and update resolution status. Passengers receive the saved response, not internal notes.
 8. Open **Reports** to preview the selected report and export the filtered results as PDF or CSV.
 
-### Proposed route-selection flow — not implemented
+### Driver route-selection flow
 
-The route-choice workflow discussed for a driver who wants **Batac–Laoag** but is assigned **Batac–Paoay** is a proposed enhancement, not a current feature:
+1. Admin creates the driver account. Registered routes and vehicles must already exist in the database.
+2. Driver opens **Home** or **Trips**, selects a route and available jeepney, then saves. Alternatively, they change the route of their own scheduled trip in Trip Details.
+3. The server saves the selection as a scheduled trip. It checks driver identity, vehicle availability and conflicts; it never fabricates GPS or publishes an active vehicle just because a route was saved.
+4. Driver starts the trip with a fresh GPS fix. The saved route, vehicle and driver become the active trip that passengers see and track.
+5. Driver ends that trip before selecting another route. The historical trip, GPS and passenger journeys retain their original links.
 
-1. Admin defines the vehicle and routes a driver is allowed to operate.
-2. Before starting a new trip, the driver selects an approved route. A route outside that set would require an Admin-approved change.
-3. Starting the trip saves the selected route with the driver, vehicle and initial GPS fix. Passengers see that trip under the selected route.
-4. The route remains locked during the active trip. The driver ends it before starting a different route.
-
-**Decision still needed:** whether drivers may choose freely among Admin-approved routes or must request approval for every route change. No approval/request workflow or route-selection permission has been added yet. Until that feature is implemented, the current assigned-trip rules above remain in effect.
+This is implemented driver-side route choice, not an Admin approval/request workflow. There is no approved-route permissions table or route-change approval queue. After a route changes, old scheduled-arrival/direction values are cleared because they may describe the previous route.
 
 ### Admin analytics and reports
 
@@ -121,6 +123,162 @@ The route-choice workflow discussed for a driver who wants **Batac–Laoag** but
 Filters, grouping, search, sorting, pagination and exports use shared metric helpers. Refresh reads MySQL, and visible admin pages refresh automatically every 30 seconds. The Reports Center supports Trip Summary, Route Analytics, Passenger Analytics, Driver Performance, Vehicle Utilization and Feedback Summary reports.
 
 Under `/admin/settings`, administrators can save the delay threshold, date-specific available vehicle hours and upcoming trip schedules. Historical schedules cannot be changed after departure. `/admin/feedback` includes undated legacy submissions and supports saved replies, private internal notes and resolution status.
+
+## Database relationships and how they work
+
+`Users` stores the login account and role. `Drivers` and `Passengers` store the role-specific records. `Trips` connects a driver, a vehicle and a route for one departure. GPS points and passenger journeys then attach to that trip, so a later trip using the same jeepney does not replace its history.
+
+A **primary key (PK)** identifies a row, such as `trip_id`. A **foreign key (FK)** points to an existing row in another table, such as `Trips.driver_id` pointing to `Drivers.driver_id`.
+
+### Database relationship diagram
+
+The diagram below shows the foreign-key relationships declared in the supplied schema and additive migrations. One parent can have zero or many child records. Additional application-validated links are described after the diagram.
+
+```mermaid
+erDiagram
+    Users ||--o{ Drivers : "user_id"
+    Users ||--o{ Passengers : "user_id"
+    Drivers ||--o{ Trips : "driver_id"
+    Vehicles ||--o{ Trips : "vehicle_id"
+    Routes ||--o{ Trips : "route_id"
+    Routes ||--o{ Stops : "route_id"
+    Trips ||--o{ Trip_GPS_Points : "trip_id"
+    Drivers ||--o{ Trip_GPS_Points : "driver_id"
+    Vehicles ||--o{ Trip_GPS_Points : "vehicle_id"
+    Vehicles ||--o{ GPS_Locations : "vehicle_id"
+    Trips ||--o{ Passenger_Journeys : "trip_id"
+    Passengers o|--o{ Passenger_Journeys : "passenger_id"
+    Passengers ||--o{ Feedback : "passenger_id"
+    Trips ||--o{ Trip_Delay_Reports : "trip_id"
+    Vehicles ||--o{ Vehicle_Availability : "vehicle_id"
+
+    Users {
+        int user_id PK
+        string fullname
+        string email UK
+        string password
+        string role
+    }
+    Drivers {
+        int driver_id PK
+        int user_id FK
+        string license_number UK
+    }
+    Passengers {
+        int passenger_id PK
+        int user_id FK
+    }
+    Vehicles {
+        int vehicle_id PK
+        string plate_number UK
+        int capacity
+    }
+    Routes {
+        int route_id PK
+        string route_name
+        string origin
+        string destination
+    }
+    Stops {
+        int stop_id PK
+        int route_id FK
+        decimal latitude
+        decimal longitude
+    }
+    Trips {
+        int trip_id PK
+        int driver_id FK
+        int vehicle_id FK
+        int route_id FK
+        string status
+    }
+    Trip_GPS_Points {
+        bigint point_id PK
+        int trip_id FK
+        int driver_id FK
+        int vehicle_id FK
+        string client_point_id UK
+        datetime captured_at
+    }
+    GPS_Locations {
+        int gps_id PK
+        int vehicle_id FK
+        datetime timestamp
+    }
+    Passenger_Journeys {
+        int journey_id PK
+        int trip_id FK
+        int passenger_id FK
+        int boarding_stop_id
+        int destination_stop_id
+        int alighting_stop_id
+        string request_id UK
+        string status
+    }
+    Feedback {
+        int feedback_id PK
+        int passenger_id FK
+        int journey_id
+        int trip_id
+        string request_id UK
+    }
+    Trip_Delay_Reports {
+        int delay_id PK
+        int trip_id FK
+        string request_id UK
+    }
+    Vehicle_Availability {
+        int availability_id PK
+        int vehicle_id FK
+        date date
+        decimal available_hours
+    }
+    Analytics_Settings {
+        string key PK
+        string value
+    }
+```
+
+`UK` means a unique key. `Vehicle_Availability` also has a combined unique key on `(vehicle_id, date)`. `Analytics_Settings` is a standalone key/value table, so it has no foreign-key line in the diagram. An Admin is a `Users` row with `role = Admin`; there is no separate Admin table.
+
+The application treats each Driver or Passenger account as having one corresponding role-specific profile. However, the imported schema does **not** declare `Drivers.user_id` or `Passengers.user_id` unique. The diagram therefore shows what the database permits, rather than claiming it enforces a one-to-one relationship.
+
+### What each connection means
+
+| Connection | How the application uses it |
+| --- | --- |
+| `Users → Drivers` | Connects a driver's email/password login to their license record. Trips use `driver_id`, not `user_id`. |
+| `Users → Passengers` | Connects a passenger's login to their own journeys and feedback. |
+| `Drivers + Vehicles + Routes → Trips` | Records who drives which jeepney on which route for a particular trip. A driver or vehicle can have many historical trips. |
+| `Routes → Stops` | Groups boarding/destination stops under a route. Stop order is not currently stored. |
+| `Trips → Trip_GPS_Points` | Stores the actual fixes for a particular trip, including the driver, vehicle, accuracy and capture time. |
+| `Vehicles → GPS_Locations` | Retains a compatibility copy of GPS fixes for existing tools. This table alone does not identify the trip; trip tracking uses `Trip_GPS_Points`. |
+| `Passengers + Trips → Passenger_Journeys` | Connects one passenger's boarding/arrival record to the vehicle trip they actually boarded. Many passengers can have journeys on the same trip. |
+| `Passengers → Feedback` | Identifies who submitted feedback. New submissions also save `journey_id` and `trip_id` so analytics can identify the route, driver and vehicle through that trip. |
+| `Trips → Trip_Delay_Reports` | Stores delay reports without changing the active trip into a completed trip. |
+| `Vehicles → Vehicle_Availability` | Stores available operating hours by vehicle and date for utilization calculations. |
+
+Passenger journey stop IDs refer to `Stops.stop_id`, but the migration does not declare foreign keys for those three stop columns. The boarding/arrival APIs validate that the selected stops belong to the trip's route. Likewise, `Feedback.journey_id` and `Feedback.trip_id` are application-managed links without declared database foreign keys in the current migration; new feedback is created through the passenger's own completed journey. Legacy feedback may have neither link.
+
+### Example: one complete trip
+
+The following IDs are an explanation, not additional seed data:
+
+1. Admin creates a driver account: `Users.user_id = 20`, `role = Driver`, and a linked `Drivers.driver_id = 7` with `user_id = 20`.
+2. An existing assignment in `Trips` might contain `trip_id = 50`, `driver_id = 7`, `vehicle_id = 3`, `route_id = 1`, and `status = Scheduled`. The route record identifies, for example, **Batac–Laoag**. The account creation form does not create this assignment.
+3. When that driver starts trip 50, the server checks ownership and the assigned vehicle/route, marks it `In Progress`, and saves a `Trip_GPS_Points` row with those same trip/driver/vehicle IDs.
+4. A signed-in passenger receives the active trip and its latest valid trip-linked location. New fixes update the displayed position; they do not create new trips.
+5. Boarding creates a `Passenger_Journeys` row containing that passenger's `passenger_id`, `trip_id = 50`, and selected stop IDs. The vehicle trip and passenger journey have separate statuses.
+6. Passenger arrival completes their journey. Driver End Trip completes the vehicle trip and stops public GPS. Neither action invents the other person's arrival record.
+7. Feedback links back to the completed passenger journey and trip. Admin reports join these records to calculate route, driver, vehicle and passenger metrics.
+
+The APIs enforce assignment ownership, one active trip per driver/vehicle, and one active journey per passenger. These are application rules, not permanent driver-to-route relationships. `Drivers` has no assigned `route_id` or `vehicle_id`; those connections are stored per trip in `Trips`. Drivers can create scheduled trips and change their own scheduled trip route through the route-selection APIs. An Admin-approved-route permissions list or route-change request queue would need an additional data model and does not exist.
+
+### Records versus calculated analytics
+
+Charts and reports are calculated from the linked operational records; there is no separate table for each chart. Completed trip timestamps supply duration, journey timestamps supply travel-hour/boarding patterns, feedback supplies ratings, and vehicle availability supplies utilization denominators. Unique request IDs prevent duplicate GPS, boarding, feedback and delay submissions. Simulation positions are generated separately and are not inserted into the real GPS tables.
+
+Schema sources: [base tables](database/transport_system.sql), [trip GPS migration](database/migrations/2026_10_25_000100_add_trip_gps_tracking.php), and [journey/analytics migration](database/migrations/2026_10_25_000200_add_analytics_records.php).
 
 ## Data and calculation rules
 
@@ -223,6 +381,7 @@ Production deployment also requires a configured PHP web server, HTTPS, private 
 | --- | --- |
 | Authentication | `POST /login`, `POST /register`, `POST /logout` |
 | Role-scoped data | `GET /api/transport/snapshot`, `GET /api/transport/trips/{id}` |
+| Driver route selection | `POST /api/transport/trips` (route and available vehicle), `PATCH /api/transport/trips/{id}/route` (own scheduled trip) |
 | Driver trip operations | `POST /api/transport/trips/{id}/start`, `/gps`, `/end`, `/delay` |
 | Passenger journeys | `POST /api/transport/journeys`, `POST /api/transport/journeys/{id}/arrive`, `/correct`, `/feedback` |
 | Account | `PATCH /api/transport/profile`, `PUT /api/transport/password` |
@@ -254,7 +413,7 @@ tools/mysql/                Java Connector/J utility
 ## Verification
 
 ```powershell
-php artisan test --filter='DriverAccountsTest|AccountConnectionTest|AnalyticsRecordsTest|TransportDatabaseTest|TripTrackingTest|DemoSimulationTest'
+php artisan test --filter='DriverRouteSelectionTest|DriverAccountsTest|AccountConnectionTest|AnalyticsRecordsTest|TransportDatabaseTest|TripTrackingTest|DemoSimulationTest'
 node --test tests/ui/*.test.mjs
 npm run build
 ```
@@ -263,6 +422,6 @@ The focused PHP tests use isolated in-memory SQLite fixtures, not the running My
 
 ## Current limitations
 
-Email delivery/verification and password recovery, saved notification preferences, manual passenger counting, contact-number storage, reliable occupancy information and an ETA prediction service are not connected. Driver route choice, route-change approval and vehicle/route/trip assignment management are not implemented. Driver account creation is available, but other administrative directory pages remain read-only. Browser GPS cannot guarantee background tracking. A physical-phone road test is still required before operational use.
+Email delivery/verification and password recovery, saved notification preferences, manual passenger counting, contact-number storage, reliable occupancy information and an ETA prediction service are not connected. Driver route choice is available before trip start. Route-change approval and Admin vehicle/route/trip assignment management are not implemented. Driver account creation is available, but other administrative directory pages remain read-only. Browser GPS cannot guarantee background tracking. A physical-phone road test is still required before operational use.
 
 See [MYSQL_SETUP.md](MYSQL_SETUP.md) for database integration details and implementation history.

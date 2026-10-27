@@ -76,6 +76,46 @@ class TripTracking
         }, 3);
     }
 
+    public function setRoute(User $user, int $routeId, ?int $vehicleId = null, ?int $tripId = null): Trip
+    {
+        $this->assertReady();
+
+        return DB::transaction(function () use ($user, $routeId, $vehicleId, $tripId) {
+            $driver = $this->lockDriver($user);
+            abort_if(Trip::where('driver_id', $driver->driver_id)->where('status', 'In Progress')->exists(), 409, 'End your active trip before setting another route.');
+            $trip = $tripId ? Trip::where('driver_id', $driver->driver_id)->lockForUpdate()->findOrFail($tripId) : null;
+            if ($trip) {
+                abort_unless($trip->status === 'Scheduled', 409, 'Only a scheduled trip can change route.');
+                $vehicleId = (int) $trip->vehicle_id;
+            }
+            DB::table('Routes')->where('route_id', $routeId)->firstOrFail();
+            DB::table('Vehicles')->where('vehicle_id', $vehicleId)->lockForUpdate()->firstOrFail();
+            abort_if(Trip::where('vehicle_id', $vehicleId)->where('status', 'In Progress')->exists(), 409, 'This jeepney is already on an active trip. Choose another vehicle.');
+            abort_if(Trip::where('vehicle_id', $vehicleId)->where('driver_id', '!=', $driver->driver_id)->where('status', 'Scheduled')->exists(), 409, 'This jeepney has a scheduled assignment for another driver. Choose another vehicle.');
+            if (! $trip) {
+                // Repeated saves reuse the driver's pending trip for this vehicle.
+                $trip = Trip::where('driver_id', $driver->driver_id)->where('vehicle_id', $vehicleId)->where('status', 'Scheduled')->orderByDesc('trip_id')->lockForUpdate()->first();
+            }
+            if (! $trip) {
+                $trip = new Trip();
+                $trip->driver_id = $driver->driver_id;
+                $trip->vehicle_id = $vehicleId;
+                $trip->status = 'Scheduled';
+                $trip->start_time = CarbonImmutable::now(config('transport.legacy_timezone'))->format('Y-m-d H:i:s');
+            }
+            if ((int) $trip->route_id !== $routeId) {
+                // An arrival estimate or direction for the old route cannot carry over.
+                foreach (['scheduled_arrival_at', 'travel_direction'] as $field) {
+                    if (Schema::hasColumn('Trips', $field)) $trip->$field = null;
+                }
+            }
+            $trip->route_id = $routeId;
+            $trip->save();
+
+            return $trip->fresh(['vehicle', 'route.stops']);
+        }, 3);
+    }
+
     public function record(User $user, int $id, array $point): array
     {
         $this->assertReady();

@@ -31,6 +31,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/transport/snapshot', [TransportDatabaseController::class, 'snapshot']);
     Route::get('/api/transport/simulation', fn (\App\Services\DemoSimulationService $service) => response()->json(['simulatedVehicles' => $service->getSimulatedPositions()]));
     Route::get('/api/transport/trips/{id}', [TransportDatabaseController::class, 'trip']);
+    Route::post('/api/transport/trips', [TripTrackingController::class, 'setRoute'])->middleware('throttle:20,1');
+    Route::patch('/api/transport/trips/{id}/route', [TripTrackingController::class, 'setRoute'])->middleware('throttle:20,1');
     Route::post('/api/transport/trips/{id}/start', [TripTrackingController::class, 'start'])->middleware('throttle:5,1,trip-start');
     Route::post('/api/transport/trips/{id}/gps', [TripTrackingController::class, 'point'])->middleware('throttle:30,1,trip-gps');
     Route::post('/api/transport/trips/{id}/end', [TripTrackingController::class, 'end'])->middleware('throttle:5,1,trip-end');

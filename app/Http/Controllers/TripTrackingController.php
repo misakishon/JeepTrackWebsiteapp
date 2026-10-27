@@ -8,6 +8,22 @@ use Illuminate\Http\Request;
 
 class TripTrackingController extends Controller
 {
+    public function setRoute(Request $request, TripTracking $tracking, TransportDatabase $database, ?string $id = null)
+    {
+        abort_unless($request->user()->role === 'Driver', 403);
+        if ($id !== null) abort_unless(ctype_digit($id), 404);
+        $input = $request->validate([
+            'route_id' => 'required|integer|exists:Routes,route_id',
+            'vehicle_id' => $id === null ? 'required|integer|exists:Vehicles,vehicle_id' : 'prohibited',
+            'driver_id' => 'prohibited',
+            'status' => 'prohibited',
+        ]);
+        $trip = $tracking->setRoute($request->user(), (int) $input['route_id'], isset($input['vehicle_id']) ? (int) $input['vehicle_id'] : null, $id === null ? null : (int) $id);
+
+        return response()->json(['trip' => $database->serializeTrip($trip), 'snapshot' => $database->forUser($request->user()), 'message' => 'Route saved. Confirm the trip and start GPS sharing when ready.'])
+            ->header('Cache-Control', 'private, no-store');
+    }
+
     public function start(Request $request, string $id, TripTracking $tracking, TransportDatabase $database)
     {
         abort_unless(ctype_digit($id), 404);

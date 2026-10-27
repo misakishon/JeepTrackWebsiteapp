@@ -55,8 +55,17 @@ class TransportDatabase
             $driver = $user->driver;
             $trips = $driver ? $driver->trips()->with(['vehicle', 'route.stops'])->get() : collect();
             $activeVehicle = $trips->where('status', 'In Progress')->first()?->vehicle_id;
+            $routeOptions = TransportRoute::with('stops')->get();
+            $vehicleOptions = DB::table('Vehicles')->whereNotExists(function ($query) use ($driver) {
+                $query->selectRaw('1')->from('Trips')->whereColumn('Trips.vehicle_id', 'Vehicles.vehicle_id')
+                    ->where(function ($busy) use ($driver) {
+                        $busy->where('status', 'In Progress')->orWhere(function ($reserved) use ($driver) {
+                            $reserved->where('status', 'Scheduled')->where('driver_id', '!=', $driver?->driver_id ?? 0);
+                        });
+                    });
+            })->get(['vehicle_id', 'plate_number', 'type', 'capacity']);
 
-            return ['profile' => $profile, 'driver' => $driver?->only('driver_id', 'license_number'), 'trips' => $trips->map(fn ($trip) => $this->serializeTrip($trip))->all(), 'locations' => $this->latestLocations($trips->pluck('vehicle_id')->unique()->all(), $trips->where('status', 'In Progress')->pluck('trip_id')->all()), 'simulatedVehicles' => $activeVehicle ? app(DemoSimulationService::class)->getSimulatedPositions((int) $activeVehicle) : [], 'tracking' => ['available' => Schema::hasTable('Trip_GPS_Points'), 'upload_interval_ms' => 5000, 'poll_interval_ms' => 3000, 'stale_seconds' => 30], 'sample_data' => config('transport.sample_data'), 'coverage' => 'GPS is shared during your active trip while this browser is open. Delay reports are saved against your active trip. Manual passenger counts are not collected.'];
+            return ['profile' => $profile, 'driver' => $driver?->only('driver_id', 'license_number'), 'routes' => $routeOptions, 'available_vehicles' => $vehicleOptions, 'trips' => $trips->map(fn ($trip) => $this->serializeTrip($trip))->all(), 'locations' => $this->latestLocations($trips->pluck('vehicle_id')->unique()->all(), $trips->where('status', 'In Progress')->pluck('trip_id')->all()), 'simulatedVehicles' => $activeVehicle ? app(DemoSimulationService::class)->getSimulatedPositions((int) $activeVehicle) : [], 'tracking' => ['available' => Schema::hasTable('Trip_GPS_Points'), 'upload_interval_ms' => 5000, 'poll_interval_ms' => 3000, 'stale_seconds' => 30], 'sample_data' => config('transport.sample_data'), 'coverage' => 'GPS is shared during your active trip while this browser is open. Delay reports are saved against your active trip. Manual passenger counts are not collected.'];
         }
         if ($user->role === 'Passenger') {
             $vehicles = DB::table('Vehicles')->get(['vehicle_id', 'plate_number', 'type', 'capacity']);
