@@ -2,6 +2,8 @@
 
 **PUJ Transportation Analytics** is a jeepney tracking and transportation reporting system for Ilocos Norte. It includes mobile-first Driver and Passenger interfaces and a responsive Admin analytics website.
 
+This repository currently demonstrates an **academic prototype**, not a confirmed deployment for a named transport operator. The workshop feedback uses the name **TransitIQ**; the implemented interface uses **PUJ Transportation Analytics**. The partner organization, final project name and responsible data owners still need confirmation.
+
 ![Jeepney Tracker logo](public/images/jeepney-tracker-logo.png)
 
 ## Technology
@@ -11,6 +13,19 @@
 - MySQL, using PHP PDO_MYSQL for application requests
 - Mapbox GL JS for maps and browser geolocation for driver GPS
 - MySQL Connector/J and a Java utility for database verification and guarded imports
+
+## Workshop feedback and evidence boundaries
+
+The [revised information-management framework](docs/TransitIQ_IM_Workshop_Revised.md) addresses all nine sections of [the workshop feedback](TransitIQ_IM_Workshop_Feedback.pdf). It includes the actual module/CRUD inventory, dataset sources and proposed owners, confirmed three-tier architecture, centralized master-record rationale, accountability/risk matrices, report integration and a prioritized roadmap.
+
+- The application backend is **Laravel/PHP with MySQL**. Node.js/Vite builds frontend assets; Java is an optional import/verification utility. They are not alternative backend implementations.
+- Driver, vehicle and route master records use one authoritative application database. GPS is operational telemetry; browser/API validation does not make this a Hybrid MDM implementation. A complete enterprise MDM workflow is not claimed.
+- Drivers choose existing registered routes for their trips; they do not create or approve master route records. Master-data corrections/approval and GPS dispute-review workflows are still proposed.
+- Location updates are browser-reported. Freshness, reported accuracy and distance-quality checks do not prove physical location, sub-meter accuracy or an under-two-second delivery guarantee. Configured intervals are approximately 5 seconds for uploads and 3 seconds for passenger polling.
+- There is **no implemented automatic 30-day deletion/anonymization policy**. Retention, the actual controller/privacy contact, legal purposes and organizational approvals remain to be established. No full RA 10173 compliance or measured reduction in waiting times is claimed.
+- Fare transactions, hardware GPS integration, total passenger/occupancy counting and ETA prediction are not implemented. Existing analytics use recorded trips/app journeys and disclose missing observations.
+
+The original submitted manuscript/bibliography was not supplied, so the revision provides verified primary-source references rather than claiming to have checked unavailable citations. See the framework's feedback-response checklist for open confirmations and its evidence appendix for source files.
 
 ## System flow
 
