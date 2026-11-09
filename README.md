@@ -398,12 +398,11 @@ php artisan transport:import
 Skip `php artisan transport:import` so existing records are preserved, and apply only the additive migrations below.
 
 #### Apply Additive Feature Migrations (Required for Both Options)
-Run the additive migrations in order to add trip GPS tracking, passenger journeys, analytics tables, and mobile bearer token (`api_token`) support:
+Run the additive migrations in order to add trip GPS tracking, passenger journeys, and analytics tables:
 
 ```powershell
 php artisan migrate --path=database/migrations/2026_10_25_000100_add_trip_gps_tracking.php
 php artisan migrate --path=database/migrations/2026_10_25_000200_add_analytics_records.php
-php artisan migrate --path=database/migrations/2026_10_26_000100_add_api_token_to_users.php
 ```
 
 > **Important:** Do **not** run `php artisan migrate:fresh` against an imported `PUJ` database, as the default Laravel starter migrations do not represent the imported `transport_system.sql` schema.
