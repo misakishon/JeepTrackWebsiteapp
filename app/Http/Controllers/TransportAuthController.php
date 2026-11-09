@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\MobileBearerAuth;
 use App\Models\User;
+use App\Services\TransportDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 
 class TransportAuthController extends Controller
 {
-    public function login(Request $request)
+    public function login(Request $request, TransportDatabase $database)
     {
         $input = $request->validate(['email' => 'required|email', 'password' => 'required|string']);
         $user = User::where('email', $input['email'])->first();
@@ -24,18 +26,34 @@ class TransportAuthController extends Controller
         if (! $valid || ! in_array($user->role, ['Admin', 'Driver', 'Passenger'], true)) {
             throw ValidationException::withMessages(['email' => 'The email or password is incorrect.']);
         }
+        if ($this->isMobileApp($request) && ! in_array($user->role, ['Driver', 'Passenger'], true)) {
+            throw ValidationException::withMessages(['email' => 'The mobile app is for Passenger and Driver accounts only. Please use the web dashboard for Admin access.']);
+        }
         // Upgrade a verified legacy plaintext password in place without changing it.
         if (! password_get_info($stored)['algo'] || Hash::needsRehash($stored)) {
             $user->password = Hash::make($input['password']);
             $user->save();
         }
         Auth::login($user);
-        $request->session()->regenerate();
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
 
-        return response()->json(['redirect' => $this->home($user), 'user' => $user->only('user_id', 'fullname', 'email', 'role')]);
+        $payload = [
+            'redirect' => $this->home($user),
+            'user' => $user->only('user_id', 'fullname', 'email', 'role'),
+        ];
+        if (in_array($user->role, ['Driver', 'Passenger'], true)) {
+            $payload['token'] = MobileBearerAuth::issueToken($user);
+            if ($this->isMobileApp($request)) {
+                $payload['transportData'] = $database->forUser($user);
+            }
+        }
+
+        return response()->json($payload);
     }
 
-    public function register(Request $request)
+    public function register(Request $request, TransportDatabase $database)
     {
         $input = $request->validate(['name' => 'required|string|max:100', 'email' => 'required|email|max:100|unique:Users,email', 'password' => ['required', 'confirmed', Password::min(8)], 'role' => 'prohibited', 'terms' => 'accepted']);
         $user = DB::transaction(function () use ($input) {
@@ -46,16 +64,29 @@ class TransportAuthController extends Controller
             return $user;
         });
         Auth::login($user);
-        $request->session()->regenerate();
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
 
-        return response()->json(['redirect' => '/passenger/home', 'user' => $user->only('user_id', 'fullname', 'email', 'role')], 201);
+        $payload = [
+            'redirect' => '/passenger/home',
+            'user' => $user->only('user_id', 'fullname', 'email', 'role'),
+            'token' => MobileBearerAuth::issueToken($user),
+        ];
+        if ($this->isMobileApp($request)) {
+            $payload['transportData'] = $database->forUser($user);
+        }
+
+        return response()->json($payload, 201);
     }
 
     public function logout(Request $request)
     {
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        Auth::guard('web')->logout();
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json(['redirect' => '/login']);
     }
@@ -65,5 +96,10 @@ class TransportAuthController extends Controller
         return match ($user->role) {
             'Admin' => '/admin/analytics','Driver' => '/driver/home',default => '/passenger/home'
         };
+    }
+
+    private function isMobileApp(Request $request): bool
+    {
+        return $request->headers->has('X-JeepTrack-Mobile') || $request->boolean('mobile');
     }
 }

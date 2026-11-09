@@ -15,7 +15,8 @@ export function pointFromPosition(position){
     return {client_point_id:crypto.randomUUID(),latitude,longitude,accuracy_m:accuracy,speed_kmh:Number.isFinite(speed)&&speed>=0&&speed*3.6<=300?speed*3.6:null,captured_at:new Date(position.timestamp).toISOString()};
 }
 export function getFreshPoint(){
-    if(!window.isSecureContext)return Promise.reject(new Error('GPS requires HTTPS on a phone browser. Open this app using HTTPS (localhost also works for desktop testing).'));
+    const isNativeApp=Boolean(window.__JEEPTRACK_MOBILE__||window.JeepTrackAndroid||location.protocol==='file:'||location.hostname==='appassets.androidplatform.net');
+    if(!window.isSecureContext&&!isNativeApp)return Promise.reject(new Error('GPS requires HTTPS on a phone browser. Open this app using HTTPS (localhost or the JeepTrack Android APK also work).'));
     if(!navigator.geolocation)return Promise.reject(new Error('This browser does not support location sharing.'));
     return new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(position=>{try{resolve(pointFromPosition(position))}catch(error){reject(error)}},error=>reject(new Error(gpsError(error))),{enableHighAccuracy:true,maximumAge:0,timeout:15000}));
 }
@@ -34,7 +35,8 @@ export default function useDriverGps({userId,tripId,onLocation,onInactive}){
     }
     useEffect(()=>{
         if(!tripId||sessionStorage.getItem(gpsConsentKey(userId,tripId))!=='yes'){Status({phase:tripId?'paused':'idle',message:tripId?'Resume GPS sharing to show passengers your current position.':'GPS sharing is not active.'});return;}
-        if(!window.isSecureContext||!navigator.geolocation){Status({phase:'error',message:'GPS requires a supported browser and HTTPS on phones.'});return;}
+        const isNativeApp=Boolean(window.__JEEPTRACK_MOBILE__||window.JeepTrackAndroid||location.protocol==='file:'||location.hostname==='appassets.androidplatform.net');
+        if((!window.isSecureContext&&!isNativeApp)||!navigator.geolocation){Status({phase:'error',message:'GPS requires a supported browser and HTTPS on phones.'});return;}
         let disposed=false,halted=false,watchId=null,timer=null,gettingFix=false,sending=false,lastSent=0,lastCapture=null,permission=null,abort=null;
         function halt(){halted=true;if(watchId!==null)navigator.geolocation.clearWatch(watchId);if(timer)clearInterval(timer);abort?.abort();}
         control.current.stop=halt;

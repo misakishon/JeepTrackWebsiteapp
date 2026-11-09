@@ -14,3 +14,85 @@
 
 .db-performance-bars{display:flex;flex-direction:column;gap:13px;margin-top:22px}.db-performance-bars>div{display:grid;grid-template-columns:90px 1fr 25px;align-items:center;gap:10px}.db-performance-bars>div>span{height:12px;background:#3974ed;border-radius:3px}.db-performance-bars small{font-size:10px}.db-performance-bars strong{font-size:12px}.stops.unordered{list-style:none}.db-transport .card form>.button{margin-top:17px}.db-transport .menu-row{text-align:left}
 .gps-sharing-body{min-width:0;flex:1}.gps-sharing-body .button{margin-top:12px;font-size:12px;min-height:44px}.mb-vehicle.stale{background:#bb801d!important;border-color:#fff4d9!important}.gps-live-dot{width:7px;height:7px;display:inline-block;border-radius:50%;background:#29a46e}.db-transport .gps-caption{flex-wrap:wrap;line-height:1.8}.db-transport .three-stats strong{font-size:17px}
+.apk-download-card{background:linear-gradient(135deg,#ffffff 0%,#f0f6ff 100%);border:1px solid #cfe0fc;border-radius:13px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:left;box-shadow:0 4px 14px #172c4d07}.apk-download-card .apk-info{display:flex;align-items:center;gap:12px;min-width:0;flex:1}.apk-download-card .apk-icon{width:44px;height:44px;border-radius:11px;background:#edf3ff;color:var(--blue);display:grid;place-items:center;flex-shrink:0;border:1px solid #d9e7ff}.apk-download-card .apk-icon .material-symbols-outlined{font-size:24px}.apk-download-card h3{font-size:14px;color:var(--navy);line-height:1.3}.apk-download-card p{font-size:11px;color:#5f738f;line-height:1.45;margin-top:3px}.apk-download-btn{background:var(--blue);color:white;border:1px solid var(--blue);border-radius:8px;min-height:42px;padding:8px 14px;font-size:12px;font-weight:650;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;flex-shrink:0;transition:background .15s}.apk-download-btn:hover{background:#1653d4}.apk-download-btn .material-symbols-outlined{font-size:18px}@media(max-width:420px){.apk-download-card{flex-direction:column;align-items:stretch}.apk-download-btn{width:100%}}.mobile-server-bar{border-top:1px solid var(--border);margin-top:18px;padding-top:16px;text-align:left}.mobile-server-bar summary{cursor:pointer;font-size:11px;font-weight:600;color:#52627a;display:flex;align-items:center;gap:6px;min-height:36px}.mobile-server-bar summary .material-symbols-outlined{font-size:16px;color:var(--blue)}.mobile-server-bar .server-row{display:flex;gap:8px;margin-top:8px}.mobile-server-bar input{flex:1;border:1px solid #dfe5ed;border-radius:7px;padding:8px 10px;font-size:13px;min-height:40px}.mobile-server-bar .button{width:auto;min-height:40px;padding:8px 12px;font-size:12px}
+/* Static non-scrollable layout for Home & Login pages */
+html:has(.app-shell.static-screen),body:has(.app-shell.static-screen){height:100dvh;max-height:100dvh;overflow:hidden;overscroll-behavior:none}
+.app-shell.static-screen{height:100dvh;max-height:100dvh;min-height:100dvh;overflow:hidden}
+.app-shell.static-screen .mobile-app{height:100dvh;max-height:100dvh;min-height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.app-shell.static-screen .app-header{height:56px;padding:0 20px;flex-shrink:0}
+.app-shell.static-screen .demo-ribbon{padding:5px 20px;flex-shrink:0}
+.app-shell.static-screen main{flex:1;min-height:0;overflow:hidden;padding:12px 20px 72px;gap:10px;justify-content:space-between}
+.app-shell.static-screen.is-auth main{padding:10px 20px 14px;justify-content:center}
+.app-shell.static-screen .greeting{padding:0}
+.app-shell.static-screen .greeting .eyebrow{margin-bottom:3px;font-size:8.5px}
+.app-shell.static-screen .greeting h1{font-size:21px;margin-bottom:2px;line-height:1.2}
+.app-shell.static-screen .greeting p{font-size:12px;line-height:1.35}
+.app-shell.static-screen .apk-download-card{padding:10px 14px;gap:10px;border-radius:11px}
+.app-shell.static-screen .apk-download-card .apk-icon{width:36px;height:36px;border-radius:9px}
+.app-shell.static-screen .apk-download-card .apk-icon .material-symbols-outlined{font-size:20px}
+.app-shell.static-screen .apk-download-card h3{font-size:13px}
+.app-shell.static-screen .apk-download-card p{font-size:10px;margin-top:1px}
+.app-shell.static-screen .apk-download-btn{min-height:36px;padding:6px 12px;font-size:11px}
+.app-shell.static-screen .card{padding:13px 15px;border-radius:11px}
+.app-shell.static-screen .card .section-heading{margin-bottom:8px}
+.app-shell.static-screen .section-heading h2{font-size:15px}
+.app-shell.static-screen .section-heading p{font-size:11px;margin-top:1px}
+.app-shell.static-screen .section-heading .text-button{min-height:28px;padding:0}
+.app-shell.static-screen .search-card{padding:13px 15px}
+.app-shell.static-screen .search-card h2{font-size:17px;margin:4px 0 8px}
+.app-shell.static-screen .location-fields>label{padding:7px 10px;margin-top:6px}
+.app-shell.static-screen .location-fields input{font-size:13px;padding-top:2px}
+.app-shell.static-screen .swap{width:34px;height:34px;top:33px;right:12px}
+.app-shell.static-screen .current-location{height:26px;min-height:26px;padding:0;font-size:11px}
+.app-shell.static-screen .card>.button{margin-top:8px;min-height:40px;padding:8px 12px;font-size:13px}
+.app-shell.static-screen .vehicle-row .jeep{width:44px;height:40px}
+.app-shell.static-screen .vehicle-row .jeep .material-symbols-outlined{font-size:28px}
+.app-shell.static-screen .vehicle-row h3{font-size:14px}
+.app-shell.static-screen .status-strip{margin:10px -15px -13px;padding:7px 15px;font-size:10px}
+.app-shell.static-screen .featured h2{font-size:19px;margin-top:6px}
+.app-shell.static-screen .info-grid{margin:9px 0;gap:10px}
+.app-shell.static-screen .stats{gap:10px}
+.app-shell.static-screen .stats>.card{padding:11px 14px}
+.app-shell.static-screen .stats strong{font-size:20px;line-height:1.15}
+.app-shell.static-screen .stats small{margin-top:3px;font-size:10px}
+.app-shell.static-screen .stats .material-symbols-outlined{top:11px;right:11px;padding:5px;font-size:17px}
+.app-shell.static-screen .nearby{padding:12px 14px}
+.app-shell.static-screen .nearby-bottom{margin-top:9px;padding-top:8px}
+.app-shell.static-screen .nearby-bottom .button{min-height:34px;padding:4px 10px}
+.app-shell.static-screen .mini-banner{padding:4px 0}
+.app-shell.static-screen .mini-banner button{min-height:34px}
+.app-shell.static-screen .bottom-nav{padding:6px 12px calc(6px + env(safe-area-inset-bottom))}
+.app-shell.static-screen .bottom-nav button{min-height:46px;gap:3px}
+.app-shell.static-screen .auth-wrap{padding:0;display:flex;flex-direction:column;gap:8px}
+.app-shell.static-screen .auth-logo{width:54px;height:54px;margin:0 auto 2px}
+.app-shell.static-screen .auth-logo>img{width:54px;height:54px}
+.app-shell.static-screen .auth-wrap h1{font-size:22px;line-height:1.2}
+.app-shell.static-screen .auth-wrap>p{margin:0 0 4px;font-size:11px}
+.app-shell.static-screen .auth-card{padding:14px 16px}
+.app-shell.static-screen .auth-card h2{font-size:18px}
+.app-shell.static-screen .auth-card>p{margin:3px 0 8px;font-size:12px}
+.app-shell.static-screen .auth-card>form{margin-top:8px}
+.app-shell.static-screen .auth-card .field{margin-bottom:9px;font-size:11px}
+.app-shell.static-screen .auth-card .field>div{margin-top:4px}
+.app-shell.static-screen .auth-card .field input{min-height:38px;padding:8px 10px;font-size:14px}
+.app-shell.static-screen .auth-card .field>div>button{height:36px;width:40px}
+.app-shell.static-screen .auth-card .between{margin:-2px 0 8px}
+.app-shell.static-screen .auth-card .between .text-button,.app-shell.static-screen .auth-card>p .text-button{min-height:24px;padding:0}
+.app-shell.static-screen .auth-card .button{min-height:38px;padding:8px 12px;font-size:13px}
+.app-shell.static-screen .demo-access{padding-top:10px;margin-top:8px;gap:6px}
+.app-shell.static-screen .demo-access-buttons{display:flex;gap:6px}
+.app-shell.static-screen .demo-access-buttons>*{flex:1;min-height:34px!important;padding:6px 8px!important;font-size:11px!important}
+.app-shell.static-screen .fine-print{margin-top:6px;font-size:9.5px}
+/* Find your route search bar & location input resets */
+.search-input{display:flex;align-items:center;gap:11px;background:#ffffff;border:1px solid #dfe5ed;border-radius:11px;min-height:48px;padding:0 14px;box-shadow:0 2px 6px rgba(23,44,77,.03);transition:border-color .15s,box-shadow .15s}
+.search-input:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(36,99,235,.13)}
+.search-input>.material-symbols-outlined{color:#64748b;font-size:21px;width:21px;height:21px;flex-shrink:0;transition:color .15s}
+.search-input:focus-within>.material-symbols-outlined{color:var(--blue)}
+.search-input input,.search-input input[type="search"],.search-input input[type="text"]{border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;width:100%;flex:1;min-width:0;height:46px;padding:0!important;font-size:15px;font-weight:500;color:var(--navy);-webkit-appearance:none;appearance:none}
+.search-input input::placeholder{color:#8a99ad;font-weight:450}
+.search-input input::-webkit-search-cancel-button,.search-input input::-webkit-search-decoration{-webkit-appearance:none;appearance:none;display:none}
+.search-input .search-clear{border:0;background:#eef2f7;color:#52627a;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;padding:0;flex-shrink:0;transition:background .15s,color .15s}
+.search-input .search-clear:hover{background:#e2e8f0;color:var(--navy)}
+.search-input .search-clear .material-symbols-outlined{font-size:16px;width:16px;height:16px}
+.location-fields input,.location-fields input[type="text"]{border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;padding:2px 0 0!important}
+.location-fields>label:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(36,99,235,.1)}

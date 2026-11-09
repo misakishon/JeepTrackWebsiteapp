@@ -12,6 +12,16 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/login', fn () => Inertia::render('Transport', ['databaseMode' => config('transport.database_enabled')]))->name('login');
+Route::get('/api/mobile/ping', fn () => response()->json(['ok' => true, 'app' => 'JeepTrack', 'service' => 'JeepTrack Mobile API', 'status' => 'ok', 'databaseMode' => (bool) config('transport.database_enabled'), 'database_connected' => (bool) config('transport.database_enabled'), 'allowed_roles' => ['Passenger', 'Driver']]));
+Route::get('/download/apk', function () {
+    $apkPath = public_path('downloads/JeepTrack.apk');
+    abort_unless(file_exists($apkPath), 404, 'The JeepTrack Android APK is not built yet.');
+
+    return response()->download($apkPath, 'JeepTrack.apk', [
+        'Content-Type' => 'application/vnd.android.package-archive',
+        'Cache-Control' => 'no-store, must-revalidate',
+    ]);
+})->name('download.apk');
 Route::post('/login', [TransportAuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/register', [TransportAuthController::class, 'register'])->middleware('throttle:5,1');
 Route::post('/logout', [TransportAuthController::class, 'logout'])->middleware('auth');

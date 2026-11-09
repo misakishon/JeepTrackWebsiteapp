@@ -53,3 +53,11 @@ Thumbs.db
 # Root temporary/source asset captures (tracked assets belong in public/images/)
 /*.png
 
+# Android intermediate build artifacts and signing keystores
+/android-app/build/
+/android-app/assets/
+/android-app/*.jks
+/android-app/*.idsig
+/public/downloads/*.idsig
+/*.idsig
+
