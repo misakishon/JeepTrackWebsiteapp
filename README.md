@@ -8,10 +8,11 @@ This repository currently demonstrates an **academic prototype**, not a confirme
 
 ## Technology
 
-- Laravel 12 / PHP 8.2+ with role-scoped authenticated APIs
+- Laravel 12 / PHP 8.2+ with role-scoped session & mobile bearer token authenticated APIs (`MobileBearerAuth`)
 - React 18, Inertia.js and Vite
-- MySQL, using PHP PDO_MYSQL for application requests
-- Mapbox GL JS for maps and browser geolocation for driver GPS
+- MySQL (or SQLite for rapid local development/testing), using PHP PDO for application requests
+- Mapbox GL JS for live maps with custom Zoom (`+`/`−`), Recenter (`⊕`), and route point controls, plus browser/native geolocation for driver GPS
+- Native Android `.apk` wrapper (`android-app/` + `build-apk.ps1`) for **Passenger** and **Driver** roles connected to the same live database backend
 - MySQL Connector/J and a Java utility for database verification and guarded imports
 
 ## Workshop feedback and evidence boundaries
@@ -309,92 +310,183 @@ Schema sources: [base tables](database/transport_system.sql), [trip GPS migratio
 - Feedback without submission dates is excluded from date-filtered analytics. Historical missing dates, schedules, journeys and GPS are not fabricated.
 - Sample records are labeled **Demo data**. Local sample routes include Batac–Laoag, Batac–Paoay, Paoay–Laoag, Laoag–San Nicolas and San Nicolas–Batac. These are illustrative records, not an official terminal registry.
 
-## Local setup
+## Setup, Installation & Running Guide
 
-### Requirements
+### 1. Prerequisites
 
-Install PHP 8.2+ with PDO_MYSQL and SQLite support for tests, Composer, Node.js 20.19+ or 22.12+, and MySQL 8. Java 11+ is required when using the Connector/J utility.
+Ensure the following tools are installed on your machine:
+
+- **PHP 8.2+** (with `pdo_mysql`, `pdo_sqlite`, `mbstring`, `openssl`, `fileinfo` enabled)
+- **Composer 2.x**
+- **Node.js 20.19+ or 22.12+** & **npm**
+- **MySQL 8.0+** (or SQLite for quick local testing)
+- **Java JDK 11+** *(required for the guarded MySQL Connector/J importer and Android APK signing)*
+- **Android SDK Build-Tools 34+ & Platform 34+** *(optional — only needed if rebuilding `JeepTrack.apk` from source via `build-apk.ps1`; a pre-built signed APK is already included at `public/downloads/JeepTrack.apk`)*
+
+---
+
+### 2. Clone & Install Dependencies
+
+Open PowerShell or your terminal in the project root and run:
 
 ```powershell
+# 1. Clone the repository (if not already cloned)
+git clone https://github.com/misakishon/JeepTrackWebsiteapp.git
+cd JeepTrackWebsiteapp
+
+# 2. Install PHP backend dependencies
 composer install
+
+# 3. Install Node.js frontend dependencies
 npm ci
+
+# 4. Create your local environment file and generate the app key
 Copy-Item .env.example .env
 php artisan key:generate
 ```
 
-Configure your local `.env`:
+---
+
+### 3. Configure `.env`
+
+Open `.env` and configure your database connection, application URL, and Mapbox token:
 
 ```dotenv
 APP_NAME="PUJ Transportation Analytics"
 APP_URL=http://127.0.0.1:8000
+
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=PUJ
 DB_USERNAME=your_mysql_user
 DB_PASSWORD="your_mysql_password"
+
 SESSION_DRIVER=file
 CACHE_STORE=file
 QUEUE_CONNECTION=sync
+
 TRANSPORT_DATABASE_ENABLED=true
 TRANSPORT_SAMPLE_DATA=true
-VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_public_access_token
+# Pre-configured encrypted Mapbox token (JT_ENC:...) is included in .env.example and decrypted automatically at runtime:
+VITE_MAPBOX_ACCESS_TOKEN=JT_ENC:...
 JAVA_BINARY=java
 ```
 
-Keep `.env` private. Use your own Mapbox public token with appropriate URL restrictions. Database credentials and application login credentials are separate.
+> **Note:** Keep `.env` private. `.env.example` already includes the shared encrypted `VITE_MAPBOX_ACCESS_TOKEN` (`JT_ENC:...`), which [`mapboxTokenCipher.js`](resources/js/Components/mapboxTokenCipher.js) decrypts automatically at runtime so anyone who clones the repository and copies `.env.example` to `.env` gets working live Mapbox maps immediately without exposing a raw `pk.eyJ...` token in plaintext.
 
-### Database initialization
+---
 
-For an **existing compatible database**, configure the connection and apply only the additive feature migrations below. Do not reimport its sample data.
+### 4. Database Initialization & Migrations
 
-For a **new installation**, first create an empty MySQL database and configure `.env`. The supplied SQL includes legacy destructive statements: use the guarded importer instead of executing that SQL directly against an existing database.
+#### Option A: Fresh MySQL Database (Recommended)
+Create an empty MySQL database named `PUJ` (or the name set in `DB_DATABASE`), then run the guarded importer to load the base schema and sample data safely:
 
 ```powershell
 php artisan config:clear
+
+# Verify database connection and target readiness
 php artisan transport:import --check
-# New empty database only:
+
+# Import base transport schema & sample data into the empty database
 php artisan transport:import
 ```
 
-The importer uses the supplied `mysql-connector-j-26.7.0.jar`, strips destructive statements, hashes seed passwords and refuses a populated target. Set `JAVA_BINARY` to your Java executable and `MYSQL_JDBC_JAR` if the JAR is stored elsewhere. PHP connectivity can also be checked with `php artisan transport:import --connector=pdo --check`.
+*(If Java is not installed, you can verify or import using PHP PDO via `php artisan transport:import --connector=pdo`.)*
 
-Apply the feature migrations in order:
+#### Option B: Existing Compatible PUJ Database
+Skip `php artisan transport:import` so existing records are preserved, and apply only the additive migrations below.
+
+#### Apply Additive Feature Migrations (Required for Both Options)
+Run the additive migrations in order to add trip GPS tracking, passenger journeys, analytics tables, and mobile bearer token (`api_token`) support:
 
 ```powershell
 php artisan migrate --path=database/migrations/2026_10_25_000100_add_trip_gps_tracking.php
 php artisan migrate --path=database/migrations/2026_10_25_000200_add_analytics_records.php
+php artisan migrate --path=database/migrations/2026_10_26_000100_add_api_token_to_users.php
 ```
 
-The original Laravel starter migrations do not describe the imported transport schema. Do not use an unrestricted migrate or migrate:fresh command for an existing PUJ database. The transport migrations preserve existing records.
+> **Important:** Do **not** run `php artisan migrate:fresh` against an imported `PUJ` database, as the default Laravel starter migrations do not represent the imported `transport_system.sql` schema.
 
-### Run the application
+---
 
-Use two terminals:
+### 5. Build Frontend Assets & Run the Application
 
+#### Development Mode (Hot Reload)
+Open **two terminals** in the project root:
+
+**Terminal 1 — Laravel Backend & API Server:**
 ```powershell
-php artisan serve --host=127.0.0.1 --port=8000
+# Bind to 0.0.0.0 so both your PC browser and Android phones on the same Wi-Fi can connect
+php artisan serve --host=0.0.0.0 --port=8000
 ```
 
+**Terminal 2 — Vite Frontend Dev Server:**
 ```powershell
 npm run dev
 ```
 
-Open `http://127.0.0.1:8000/login`. Sign in with an account provisioned in your database. Public registration is available for passengers.
-
-For a production asset build:
+#### Production Bundle Mode (Single Server)
+If you build the frontend bundle first, you only need `php artisan serve`:
 
 ```powershell
 npm run build
+php artisan serve --host=0.0.0.0 --port=8000
 ```
 
-Production deployment also requires a configured PHP web server, HTTPS, private environment configuration, writable Laravel runtime directories and production-appropriate database accounts. The development server is not a production deployment.
+Now open **`http://127.0.0.1:8000/login`** in your browser:
+- **Passenger Home:** `http://127.0.0.1:8000/passenger/home`
+- **Driver Home:** `http://127.0.0.1:8000/driver/home`
+- **Admin Analytics Dashboard:** `http://127.0.0.1:8000/admin/analytics`
+- **Direct APK Download:** `http://127.0.0.1:8000/download/apk`
+
+---
+
+### 6. Installing & Running the Android `.apk` (Passenger & Driver App)
+
+The Android app (`JeepTrack.apk`) provides the exact mobile UI for **Passenger** and **Driver** accounts only (Admin accounts are blocked on the mobile `.apk` and directed to the web dashboard) and connects directly to the same live database as the website.
+
+#### A. Download & Install the `.apk`
+1. **From the Website UI:** Open `/login`, `/passenger/home`, or `/driver/home` and click the **"Download .APK"** button on the **JeepTrack Mobile App** card (or visit `http://<your-server-ip>:8000/download/apk` directly on your Android phone).
+2. **From the Project Folder:** Copy `JeepTrack.apk` (or `public/downloads/JeepTrack.apk`) to your Android device via USB or file share.
+3. Open the `.apk` on your Android phone, allow **"Install unknown apps"** if prompted, and launch **JeepTrack**.
+
+#### B. Connect the `.apk` to Your Database Server
+1. Ensure your computer is running `php artisan serve --host=0.0.0.0 --port=8000` and that your phone is connected to the **same Wi-Fi network** (or use an Android Emulator).
+2. Find your computer's local LAN IP address by running `ipconfig` in PowerShell (e.g., `192.168.1.15`).
+3. On the JeepTrack app's **Login** screen, tap **"Database Server Connection"** at the bottom:
+   - **Real Android Phone on Same Wi-Fi:** Enter `http://192.168.1.15:8000` (replace with your PC's IPv4 address).
+   - **Android Studio Emulator:** Enter `http://10.0.2.2:8000` (default).
+   - **USB Debugging (`adb reverse tcp:8000 tcp:8000`):** Enter `http://127.0.0.1:8000`.
+4. Tap **Save & Test** — once confirmed, sign in with any **Passenger** or **Driver** database account. All trips, live GPS updates, route changes, boardings, and feedback sync in real time with the website and Admin Analytics dashboard.
+
+#### C. Rebuilding `JeepTrack.apk` After UI Changes
+Whenever you modify React/CSS files and want to update the packaged `.apk`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build-apk.ps1
+```
+
+This script runs `npm run build`, syncs the compiled assets into `android-app/`, compiles the native Android WebView bridge (`MainActivity.java`), aligns the package with `zipalign`, signs it with `apksigner`, and outputs the updated APK to both `public/downloads/JeepTrack.apk` and `JeepTrack.apk`.
+
+---
+
+### 7. Viewing Phone Mode on Desktop Without Opening Inspect (`F12`)
+
+- **Built-in Phone Frame:** Simply open `http://127.0.0.1:8000/login` or `/passenger/home` on a regular desktop browser window — the app automatically renders inside a centered `560px` mobile phone frame alongside the desktop rail.
+- **Standalone App Window:** Run the following command in PowerShell to launch a frameless mobile-sized window (`412×880`) with no address bar or DevTools:
+  ```powershell
+  Start-Process msedge -ArgumentList "--app=http://127.0.0.1:8000/passenger/home --window-size=412,880"
+  ```
+
+---
 
 ## Main application endpoints
 
 | Area | Endpoints |
 | --- | --- |
-| Authentication | `POST /login`, `POST /register`, `POST /logout` |
+| Authentication (Web & Mobile Bearer) | `POST /login`, `POST /register`, `POST /logout` |
+| Mobile Connectivity & APK Download | `GET /api/mobile/ping`, `GET /download/apk` |
 | Role-scoped data | `GET /api/transport/snapshot`, `GET /api/transport/trips/{id}` |
 | Driver route selection | `POST /api/transport/trips` (route and available vehicle), `PATCH /api/transport/trips/{id}/route` (own scheduled trip) |
 | Driver trip operations | `POST /api/transport/trips/{id}/start`, `/gps`, `/end`, `/delay` |
@@ -405,22 +497,26 @@ Production deployment also requires a configured PHP web server, HTTPS, private 
 | Analytics configuration | `PUT /api/admin/analytics/settings`, `/availability`, `/trips/{id}/schedule` |
 | Feedback review | `PATCH /api/admin/analytics/feedback/{id}` |
 
-All operational endpoints require authentication, appropriate role and record ownership checks. Browser requests use Laravel session authentication and CSRF protection.
+All operational endpoints require authentication, appropriate role and record ownership checks. Browser requests use Laravel session authentication and CSRF protection; Android `.apk` requests authenticate against the same endpoints using `Authorization: Bearer <token>` via `MobileBearerAuth`.
 
 ## Project structure
 
 ```text
+android-app/                Native Android WebView project & manifest for JeepTrack.apk
 app/Http/Controllers/       Authentication, trip/GPS, journey and analytics APIs
+app/Http/Middleware/        MobileBearerAuth middleware for Android APK bearer tokens
 app/Models/                 Models mapped to the supplied MySQL schema
 app/Services/               Database serialization, analytics, tracking and import logic
-database/migrations/        Additive tracking and analytics schema extensions
+build-apk.ps1               Automated Vite + Android SDK APK build & signing script
+database/migrations/        Additive tracking, analytics, and mobile token migrations
 database/transport_system.sql  Local sample schema/data source
+public/downloads/           Signed downloadable JeepTrack.apk served at /download/apk
 resources/js/Pages/         Driver, Passenger and Admin interfaces
-resources/js/Components/    Shared map, icons and UI components
+resources/js/Components/    Shared map, icons, APK download card, and UI components
 resources/js/admin/         Analytics calculations, charts, settings and exports
-resources/js/hooks/         Browser GPS lifecycle
-routes/web.php              Web pages and authenticated API routes
-tests/Feature/              Isolated backend feature tests
+resources/js/hooks/         Browser & mobile GPS lifecycle
+routes/web.php              Web pages, APK download route, and authenticated API routes
+tests/Feature/              Isolated backend & mobile APK authentication feature tests
 tests/ui/                   Analytics and export calculation tests
 tools/mysql/                Java Connector/J utility
 ```
@@ -428,12 +524,12 @@ tools/mysql/                Java Connector/J utility
 ## Verification
 
 ```powershell
-php artisan test --filter='DriverRouteSelectionTest|DriverAccountsTest|AccountConnectionTest|AnalyticsRecordsTest|TransportDatabaseTest|TripTrackingTest|DemoSimulationTest'
-node --test tests/ui/*.test.mjs
+php artisan test --filter="DriverRouteSelectionTest|DriverAccountsTest|AccountConnectionTest|AnalyticsRecordsTest|TransportDatabaseTest|TripTrackingTest|DemoSimulationTest|MobileApkAndAuthTest"
+node --test tests/ui/analytics-data.test.mjs
 npm run build
 ```
 
-The focused PHP tests use isolated in-memory SQLite fixtures, not the running MySQL database. The current focused checks cover role isolation, GPS/trip lifecycle, journey deduplication, feedback privacy, schedules, operating hours and analytics calculations. Unmodified Laravel scaffold tests are not the transport application's acceptance suite.
+The focused PHP tests use isolated in-memory SQLite fixtures, not the running MySQL database. The current focused checks cover role isolation, mobile APK bearer authentication & Admin role restriction, GPS/trip lifecycle, journey deduplication, feedback privacy, schedules, operating hours and analytics calculations.
 
 ## Current limitations
 

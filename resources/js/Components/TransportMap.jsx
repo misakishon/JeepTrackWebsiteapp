@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import roadRoutes from '../roadRoutes.json';
 import './TransportMap.css';
 import { createVehicleElement, updateVehicleHeading, renderVehicleMarkers } from './vehicleMarker';
+import { resolveMapboxToken } from './mapboxTokenCipher';
 
 // Mapbox supplies the base map.
 const SDK = 'https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js';
@@ -368,7 +369,7 @@ export default function TransportMap({
             if (!disposed) setStatus('error');
         }, 12000);
 
-        const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+        const token = resolveMapboxToken(import.meta.env.VITE_MAPBOX_ACCESS_TOKEN);
         if (!token) {
             clearTimeout(timeout);
             setStatus('error');
@@ -411,12 +412,13 @@ export default function TransportMap({
                 instance.fitBounds(bounds, { padding: { top: 55, bottom: 60, left: 45, right: 45 }, duration: 0, maxZoom: 14 });
             }
 
-            instance.addControl(new gl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false, showUserHeading: false }), 'top-right');
-
-            const addStopMarker = (point, label, vehicle = false) => {
+            const addStopMarker = (point, label, vehicle = false, isTerminal = false) => {
                 const element = vehicle ? createVehicleElement() : document.createElement('button');
                 element.type = 'button';
-                if (!vehicle) element.className = 'mb-stop';
+                if (!vehicle) {
+                    element.className = 'mb-stop' + (isTerminal ? ' terminal' : '');
+                    element.innerHTML = '<span class="mb-stop-dot" aria-hidden="true"></span>';
+                }
                 element.setAttribute('aria-label', label);
                 if (vehicle) {
                     const index = activeRoadLine.indexOf(point);
@@ -431,11 +433,16 @@ export default function TransportMap({
             };
 
             if (mapData) {
-                knownStops.forEach(stop => addStopMarker([Number(stop.longitude), Number(stop.latitude)], stop.label || stop.stop_name || 'Route stop'));
+                knownStops.forEach((stop, idx) => addStopMarker(
+                    [Number(stop.longitude), Number(stop.latitude)],
+                    stop.label || stop.stop_name || 'Route stop',
+                    false,
+                    idx === 0 || idx === knownStops.length - 1 || Boolean(stop.isTerminal)
+                ));
             } else {
                 const previewPoints = activeRoadLine.length ? activeRoadLine : ROUTE_WAYPOINTS[1];
-                addStopMarker(previewPoints[0], route[1] + ' · demo boarding stop');
-                addStopMarker(previewPoints[previewPoints.length - 1], route[2] + ' · demo destination');
+                addStopMarker(previewPoints[0], route[1] + ' · demo boarding stop', false, true);
+                addStopMarker(previewPoints[previewPoints.length - 1], route[2] + ' · demo destination', false, true);
                 addStopMarker(previewPoints[Math.floor(previewPoints.length / 2)], 'IJ-087 · illustrative sample position, not live GPS', true);
             }
 
@@ -809,9 +816,31 @@ export default function TransportMap({
             {status === 'ready' && (
                 <>
                     <span className={'map-label ' + (hasSim && !knownLocation ? 'simulation' : '')}>{mapLabel}</span>
-                    <button className="mb-recenter" aria-label={mapData?.followVehicle && knownLocation ? 'Recenter vehicle' : 'Recenter route'} onClick={recenter}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M20 4 14 20 10 14 4 10Z" /></svg>
-                    </button>
+                    <div className="mb-map-controls" role="group" aria-label="Map zoom and recenter controls">
+                        <div className="mb-zoom-pill">
+                            <button type="button" className="mb-ctrl-btn" aria-label="Zoom in" onClick={() => mapRef.current?.zoomIn({ duration: 220 })}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                </svg>
+                            </button>
+                            <button type="button" className="mb-ctrl-btn" aria-label="Zoom out" onClick={() => mapRef.current?.zoomOut({ duration: 220 })}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <button type="button" className="mb-ctrl-btn mb-recenter" aria-label={mapData?.followVehicle && knownLocation ? 'Recenter vehicle' : 'Recenter route'} onClick={recenter}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="7" />
+                                <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+                                <line x1="12" y1="2" x2="12" y2="5" />
+                                <line x1="12" y1="19" x2="12" y2="22" />
+                                <line x1="2" y1="12" x2="5" y2="12" />
+                                <line x1="19" y1="12" x2="22" y2="12" />
+                            </svg>
+                        </button>
+                    </div>
                 </>
             )}
             {status === 'loading' && (
@@ -901,8 +930,30 @@ function StopPreview({ stops, location, simulatedVehicles = [], liveVehicles = [
                     </select>
                 </label>
             )}
-            <div className="map-controls">
-                <button aria-label="Recenter route" onClick={() => Z(1)}>↺</button>
+            <div className="mb-map-controls" role="group" aria-label="Map zoom and recenter controls">
+                <div className="mb-zoom-pill">
+                    <button type="button" className="mb-ctrl-btn" aria-label="Zoom in" onClick={() => Z(z => Math.min(2.2, Number((z + 0.25).toFixed(2))))}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                    </button>
+                    <button type="button" className="mb-ctrl-btn" aria-label="Zoom out" onClick={() => Z(z => Math.max(0.75, Number((z - 0.25).toFixed(2))))}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                    </button>
+                </div>
+                <button type="button" className="mb-ctrl-btn mb-recenter" aria-label="Recenter route" onClick={() => Z(1)}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="7" />
+                        <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+                        <line x1="12" y1="2" x2="12" y2="5" />
+                        <line x1="12" y1="19" x2="12" y2="22" />
+                        <line x1="2" y1="12" x2="5" y2="12" />
+                        <line x1="19" y1="12" x2="22" y2="12" />
+                    </svg>
+                </button>
             </div>
             <span className="map-selected">
                 {selected || (simulatedVehicles.length ? 'Demo simulation — not real GPS' : (location ? 'Latest recorded vehicle point' : 'Route stops'))}

@@ -10,8 +10,10 @@
 .coordinate-stop-picker{position:absolute;left:12px;top:55px;font:9px Inter,Arial,sans-serif;color:#5e7696;background:#fffffff0;border:1px solid #dce5f0;border-radius:5px;padding:7px 9px;max-width:calc(100% - 75px)}
 .coordinate-stop-picker select{display:block;margin-top:4px;min-height:31px;max-width:200px;width:100%;border:0;background:white;font:11px Inter,Arial,sans-serif;color:#365785;padding:5px 22px 5px 0;box-shadow:none}
 
-/* Hide only the unwanted plus button; retain other controls and zoom gestures. */
-.mapbox-wrap .mapboxgl-ctrl-zoom-in { display:none!important; }
+/* Hide default Mapbox zoom/geolocate controls in favor of clean custom map controls. */
+.mapbox-wrap .mapboxgl-ctrl-zoom-in,
+.mapbox-wrap .mapboxgl-ctrl-zoom-out,
+.mapbox-wrap .mapboxgl-ctrl-geolocate { display:none!important; }
 
 /* Never animate Mapbox's positioning transform or put a border on its anchor. */
 .mapbox-wrap .mb-vehicle,
@@ -41,7 +43,64 @@
     font-size:8px;font-weight:700;padding:1px 3px;border-radius:3px;
     border:1px solid white;line-height:1;pointer-events:none;
 }
-.mb-recenter { display:grid;place-items:center; }
+
+/* Crisp route stop markers & terminal markers */
+.mb-stop {
+    width:16px;height:16px;padding:0;border-radius:50%;
+    background:#ffffff;border:3.5px solid #2463eb;
+    box-shadow:0 2px 6px rgba(15,23,42,0.22), 0 0 0 2px rgba(255,255,255,0.85);
+    display:grid;place-items:center;cursor:pointer;
+}
+.mb-stop.terminal {
+    width:20px;height:20px;border-width:4px;
+    box-shadow:0 0 0 4px rgba(36,99,235,0.22), 0 2px 8px rgba(15,23,42,0.28);
+}
+.mb-stop-dot {
+    width:4px;height:4px;border-radius:50%;background:#2463eb;display:block;pointer-events:none;
+}
+.mb-stop.terminal .mb-stop-dot {
+    width:6px;height:6px;
+}
+
+/* Sleek vertical Zoom (+ / -) pill & Recenter target controls */
+.mb-map-controls {
+    position:absolute;right:12px;bottom:32px;z-index:4;
+    display:flex;flex-direction:column;gap:8px;align-items:center;
+}
+.mb-zoom-pill {
+    display:flex;flex-direction:column;background:#ffffff;
+    border:1px solid #dbe3ef;border-radius:10px;
+    box-shadow:0 3px 10px rgba(15,23,42,0.12);overflow:hidden;
+}
+.mb-ctrl-btn {
+    width:38px;height:38px;padding:0;border:0;
+    background:#ffffff;color:#1e293b;
+    display:grid;place-items:center;cursor:pointer;
+    transition:background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+.mb-zoom-pill .mb-ctrl-btn + .mb-ctrl-btn {
+    border-top:1px solid #e2e8f0;
+}
+.mb-ctrl-btn:hover {
+    background:#f8fafc;color:#2463eb;
+}
+.mb-ctrl-btn:active {
+    background:#eff6ff;color:#1d4ed8;
+}
+.mb-ctrl-btn svg {
+    width:18px;height:18px;display:block;flex-shrink:0;
+}
+.mb-ctrl-btn.mb-recenter {
+    position:static;top:auto;right:auto;
+    width:38px;height:38px;font-size:inherit;
+    background:#ffffff;color:#2463eb;
+    border:1px solid #dbe3ef;border-radius:10px;
+    box-shadow:0 3px 10px rgba(15,23,42,0.12);
+    display:grid;place-items:center;
+}
+.mb-ctrl-btn.mb-recenter:hover {
+    background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;
+}
 
 /* Popup viewport constraint & responsive phone styling */
 .mapboxgl-popup{
